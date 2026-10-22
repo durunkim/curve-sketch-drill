@@ -17,3 +17,8 @@ Open `index.html` in a browser (works best in Safari on iPad with Apple Pencil, 
 - Copy-to-Desmos for every question.
 
 Progress (history, stars, ratings) is stored in the browser you use.
+
+## Run it full screen on iPad
+1. Make this repo public and turn on GitHub Pages (Settings → Pages → Deploy from a branch → `main`, `/ (root)`).
+2. Open `https://durunkim.github.io/curve-sketch-drill/` in Safari.
+3. Share → Add to Home Screen. Open it from the Home Screen icon: it runs full screen with no Safari bars.
