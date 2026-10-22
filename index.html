@@ -1,0 +1,1468 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<style>[hidden]{display:none!important}body{margin:0}img{max-width:100%}</style>
+</head>
+<body>
+<title>Curve Sketch Drill</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=IBM+Plex+Mono:wght@400;500&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: a white drafting desk. Dotted infinite sheet on the left, panel on the right; stacks on phones.
+   Deliberately single light theme: white ground, flat light-orange controls, black text. */
+:root{
+  --paper:#FFFFFF; --dot:#D9CBBD; --minor:#F3E9DF; --major:#E6D2BD; --axis:#1A1A1A;
+  --ink:#141414; --mark:#D2362B; --c2:#2457A6; --c3:#2E7D32; --guide:#9A8F86; --poi:#8C8681;
+  --bg:#FFFFFF; --panel:#FFFFFF; --text:#111111; --muted:#5E5650; --line:#F1DFCB;
+  --accent:#E8832A; --accent-fg:#111111; --chip:#FFF7EE; --chip-on:#FFE1BF;
+  --orange:#FFE9D2; --orange-hi:#FFDFBF; --orange-on:#FFCF9E; --btn-bd:#F2C394;
+  --good:#1E7A3D; --warn:#A35F00; --bad:#B3322A; color-scheme:light;
+  --f-math:"STIX Two Text","Cambria Math",Cambria,"Times New Roman",serif;
+  --f-ui:"Atkinson Hyperlegible",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:var(--f-ui);font-size:15px;line-height:1.45}
+.app{max-width:1360px;margin:0 auto;padding-block:16px 28px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+header.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.brand h1{margin:0;font-family:var(--f-math);font-weight:600;font-size:1.7rem;letter-spacing:.005em;text-wrap:balance}
+.brand h1 i{color:var(--accent)}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:.9rem}
+.filters{display:flex;flex-wrap:wrap;gap:10px}
+.filters label{display:flex;flex-direction:column;gap:3px;font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+select{font:inherit;font-size:.92rem;text-transform:none;letter-spacing:0;color:var(--text);background:var(--orange);border:1px solid var(--btn-bd);border-radius:6px;padding:.4rem .5rem}
+.desk{display:grid;grid-template-columns:minmax(0,1fr) 370px;gap:16px;align-items:start}
+@media (max-width:920px){.desk{grid-template-columns:minmax(0,1fr)}}
+.sheet-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.toolbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.toolbar .sep{width:1px;height:24px;background:var(--line);margin:0 4px}
+button{font:inherit;color:var(--text);background:var(--orange);border:1px solid var(--btn-bd);border-radius:6px;padding:.45rem .75rem;cursor:pointer;line-height:1.2}
+button:hover{border-color:var(--accent);background:var(--orange-hi)}
+button:focus-visible,select:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button[aria-pressed="true"]{background:var(--orange-on);border-color:var(--accent);color:var(--text)}
+button.primary{background:var(--orange-on);color:#111;border-color:var(--accent);font-weight:700}
+button.primary:hover{filter:brightness(1.07)}
+button:disabled{opacity:.45;cursor:default}
+.tool svg{width:16px;height:16px;vertical-align:-3px;margin-right:4px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round}
+.axis-ctl{margin-left:auto;display:flex;flex-wrap:wrap;gap:10px}
+.scale-sel{display:flex;align-items:center;gap:6px;font-size:.82rem;color:var(--muted)}
+.sheet{position:relative;width:100%;height:520px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--paper);touch-action:none;cursor:crosshair;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;box-shadow:0 1px 0 #fff inset}
+.sheet.pan{cursor:grab}.sheet.panning{cursor:grabbing}
+.sheet canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.sheet canvas#cSol,.sheet canvas#cHov{pointer-events:none}
+.sheet.erase{cursor:cell}
+.legend{position:absolute;top:10px;right:10px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:6px 10px;font-family:var(--f-math);font-size:.95rem;display:flex;flex-direction:column;gap:2px;pointer-events:none}
+.legend span{display:flex;align-items:center;gap:8px}
+.legend b{display:inline-block;width:18px;height:3px;border-radius:2px}
+.sheet-note{margin:0;color:var(--muted);font-size:.82rem}
+kbd{font-family:var(--f-mono);font-size:.78em;border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 .3em;background:var(--panel)}
+.panel{display:flex;flex-direction:column;gap:12px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.qmeta{display:flex;flex-wrap:wrap;gap:6px;align-items:center;font-size:.75rem}
+.pill{border:1px solid var(--line);border-radius:999px;padding:1px 9px;color:var(--muted);letter-spacing:.03em}
+.pill.lvl3{color:var(--bad);border-color:currentColor}
+.pill.lvl2{color:var(--warn);border-color:currentColor}
+.pill.review{color:var(--accent);border-color:currentColor}
+.qnum{margin-left:auto;font-family:var(--f-mono);color:var(--muted)}
+.ask{margin:10px 0 2px;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.eq{font-family:var(--f-math);font-size:clamp(1.3rem,2.3vw,1.7rem);line-height:1.9;overflow-x:auto;overflow-y:hidden;padding-bottom:2px}
+.eq i,.math i{font-style:italic}
+.op{font-style:normal}
+sup{font-size:.66em;vertical-align:.6em;line-height:0}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;margin:0 .1em;font-size:.88em;line-height:1.25}
+.fr>span:first-child{padding:0 .2em .06em}
+.fr>span:last-child{border-top:1px solid currentColor;padding:.06em .2em 0}
+.ov{border-top:1px solid currentColor;padding-top:.04em}
+.and{font-family:var(--f-ui);font-size:.62em;color:var(--muted);margin:0 .5em;letter-spacing:.04em}
+.qnote{margin:4px 0 0;color:var(--muted);font-size:.9rem}
+h3{margin:0 0 8px;font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chips button{font-size:.82rem;padding:.3rem .6rem;border-radius:999px}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.hint{border-left:3px solid var(--warn);padding:8px 12px;background:var(--chip);border-radius:0 6px 6px 0;font-size:.92rem}
+.hint b{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--warn);margin-bottom:2px}
+dl.feat{margin:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 12px;font-size:.88rem}
+dl.feat dt{color:var(--muted);font-size:.78rem;padding-top:1px}
+dl.feat dd{margin:0;font-family:var(--f-mono);font-size:.82rem;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.idea{margin-top:12px;font-size:.92rem;border-top:1px solid var(--line);padding-top:10px}
+.idea b{display:block;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+.toggles{display:flex;flex-wrap:wrap;gap:14px;margin-top:10px;font-size:.88rem}
+.toggles label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.wa{display:inline-block;margin-top:10px;color:var(--accent);font-size:.9rem}
+.rate{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.rate button{font-size:.84rem;padding:.5rem .3rem}
+.rate [data-r="nailed"]{border-color:var(--good);color:var(--good)}
+.rate [data-r="partial"]{border-color:var(--warn);color:var(--warn)}
+.rate [data-r="missed"]{border-color:var(--bad);color:var(--bad)}
+.foot{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.foot #nextBtn{flex:1}
+.star{font-size:.78rem;padding:.2rem .6rem;border-radius:999px}
+.star[aria-pressed="true"]{color:var(--warn);border-color:var(--warn);background:var(--chip)}
+.bank{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;overflow-y:auto}
+.bank li{display:flex;align-items:center;gap:6px;min-width:0}
+.bank .bq{flex:1;min-width:0;text-align:left;font-family:var(--f-math);font-size:1.02rem;padding:.35rem .6rem;overflow-x:auto;white-space:nowrap;display:flex;align-items:center;gap:8px}
+.bank .bq.cur{border-color:var(--accent);background:var(--chip-on)}
+.bank .bq small{font-family:var(--f-ui);font-size:.68rem;color:var(--muted);flex:none}
+.bank .rm{padding:.3rem .55rem;color:var(--muted)}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:6px}
+.tabs button{border:none;border-bottom:2px solid transparent;border-radius:0;background:none;padding:.4rem .6rem;font-size:.85rem;color:var(--muted)}
+.tabs button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent);font-weight:700}
+.bank .sv{padding:.3rem .5rem;color:var(--muted)}
+.bank .sv[aria-pressed="true"]{color:var(--warn)}
+.pages{display:flex;gap:4px;border-bottom:1px solid var(--line)}
+.pages button{border:none;border-bottom:3px solid transparent;border-radius:0;background:none;padding:.55rem .9rem;font-size:.95rem;color:var(--muted)}
+.pages button[aria-selected="true"]{color:var(--text);border-bottom-color:var(--accent);font-weight:700}
+.bankview{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:920px){.bankview{grid-template-columns:minmax(0,1fr)}}
+.bank-col{display:flex;flex-direction:column;gap:10px}
+.bankview .bank{max-height:72vh}
+.pv-sheet{position:relative;width:100%;height:420px;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:var(--paper);margin-top:8px}
+.pv-sheet canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.pv-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-top:12px}
+.pv-grid .idea{margin-top:0;border-top:none;padding-top:0}
+@media (max-width:640px){.pv-grid{grid-template-columns:minmax(0,1fr)}}
+.desmos{margin-top:12px;display:flex;flex-direction:column;gap:6px}
+.ds-row{display:flex;gap:6px;align-items:center;min-width:0}
+.ds-row code{flex:1;min-width:0;overflow-x:auto;white-space:nowrap;font-family:var(--f-mono);font-size:.82rem;background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:.4rem .55rem;user-select:all;-webkit-user-select:all}
+.ds-row button{font-size:.8rem;padding:.35rem .6rem;flex:none}
+.ds-open{align-self:flex-start;display:inline-block;text-decoration:none;color:#111;font-weight:700;background:var(--orange-on);border:1px solid var(--accent);border-radius:6px;padding:.45rem .8rem}
+.ds-note{margin:0;color:var(--muted);font-size:.8rem}
+.axes-tag{position:absolute;left:10px;bottom:10px;background:var(--orange);border:1px solid var(--btn-bd);border-radius:999px;padding:3px 11px;font-size:.78rem;color:#111;pointer-events:none}
+.view-switch{position:absolute;top:10px;left:10px;display:inline-flex;border:1px solid var(--btn-bd);border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);z-index:2}
+.view-switch button{border:none;border-radius:0;padding:.45rem .9rem;font-weight:700;font-size:.88rem}
+.view-switch button+button{border-left:1px solid var(--btn-bd)}
+.bank-empty{margin:0;color:var(--muted);font-size:.86rem}
+.stats{color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
+@media (max-width:520px){.actions{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:no-preference){button{transition:background .15s,border-color .15s}}
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <h1>Curve Sketch <i>Drill</i></h1>
+      <p>Oxbridge engineering interview practice. Sketch first, then reveal and compare.</p>
+    </div>
+    <div class="filters">
+      <label for="src">Questions
+        <select id="src">
+          <option value="mix">Mix: interview bank + combinations</option>
+          <option value="gen">Combinations only</option>
+          <option value="bank">Interview bank only</option>
+          <option value="mine">My saved bank only</option>
+        </select>
+      </label>
+      <label for="lvl">Difficulty
+        <select id="lvl">
+          <option value="1">Easy</option>
+          <option value="2">Medium</option>
+          <option value="3">Hard</option>
+        </select>
+      </label>
+    </div>
+  </header>
+  <nav class="pages" role="tablist" aria-label="Pages">
+    <button role="tab" id="pgPractice" aria-selected="true">Practice</button>
+    <button role="tab" id="pgBank" aria-selected="false">Question bank</button>
+    <button role="tab" id="pgSaved" aria-selected="false">My saved</button>
+  </nav>
+
+  <main class="desk" id="viewPractice">
+    <section class="sheet-col">
+      <div class="toolbar" role="toolbar" aria-label="Drawing tools">
+        <button class="tool" id="tPen" aria-pressed="true" title="Pen (P)"><svg viewBox="0 0 16 16"><path d="M2 14c3-1 4-5 6-7s4-3 6-5"/></svg>Pen</button>
+        <button class="tool" id="tDash" aria-pressed="false" title="Dashed line for asymptotes (D)"><svg viewBox="0 0 16 16"><path d="M8 1v3M8 7v2M8 12v3"/></svg>Asymptote</button>
+        <button class="tool" id="tErase" aria-pressed="false" title="Erase whole strokes (E)"><svg viewBox="0 0 16 16"><path d="M3 11l6-6 4 4-4 4H5zM6 14h8"/></svg>Erase</button>
+        <button class="tool" id="tMove" aria-pressed="false" title="Move around the sheet"><svg viewBox="0 0 16 16"><path d="M8 1v14M1 8h14M8 1 6 3M8 1l2 2M8 15l-2-2M8 15l2-2M1 8l2-2M1 8l2 2M15 8l-2-2M15 8l-2 2"/></svg>Move</button>
+        <button id="centreBtn" title="Back to the starting view">Re-centre</button>
+        <button id="stylusBtn" aria-pressed="true" hidden title="Only the Apple Pencil draws; fingers move the sheet">Pencil only</button>
+        <span class="sep"></span>
+        <button id="undoBtn" title="Undo (Ctrl+Z)">Undo</button>
+        <button id="clearBtn">Clear</button>
+        <button id="axesBtn" aria-pressed="false">Axes</button>
+        <div class="axis-ctl" id="axisCtl" hidden>
+          <label class="scale-sel" for="unitSel">x units
+            <select id="unitSel">
+              <option value="int">Integers</option>
+              <option value="rad">Radians</option>
+              <option value="deg">Degrees</option>
+            </select>
+          </label>
+          <label class="scale-sel" id="rangeWrap" for="rangeSel" hidden>Range
+            <select id="rangeSel"></select>
+          </label>
+        </div>
+      </div>
+      <div class="sheet" id="sheet">
+        <canvas id="cBase"></canvas>
+        <canvas id="cInk"></canvas>
+        <canvas id="cSol"></canvas>
+        <canvas id="cHov"></canvas>
+        <div class="legend" id="legend" hidden></div>
+        <div class="axes-tag" id="axesTag" hidden></div>
+        <div class="view-switch" id="viewSwitch" role="tablist" aria-label="Show" hidden><button id="vInk" aria-pressed="false">My sketch</button><button id="vAns" aria-pressed="true">Answer</button></div>
+      </div>
+      <p class="sheet-note" id="shortcuts">Draw with mouse, finger or stylus. Talk through your reasoning out loud as you go.</p>
+    </section>
+
+    <aside class="panel">
+      <div class="card">
+        <div class="qmeta"><span class="pill" id="qLevel">Level</span><span class="pill" id="qSrc">Source</span><span class="pill review" id="qReview" hidden>Review</span><span class="qnum" id="qNum">#1</span><button class="star" id="saveBtn" aria-pressed="false">☆ Save</button></div>
+        <p class="ask" id="qAsk">Sketch</p>
+        <div class="eq math" id="qEq"></div>
+        <p class="qnote" id="qNote" hidden></p>
+      </div>
+
+      <div class="card">
+        <h3>Method checklist</h3>
+        <div class="chips" id="chips"></div>
+      </div>
+
+      <div class="actions">
+        <button id="hintBtn">Show key idea</button>
+        <button id="revealBtn" class="primary">Reveal answer</button>
+      </div>
+      <div class="hint" id="hint" hidden></div>
+
+      <div class="card" id="answer" hidden>
+        <h3>Key features (numerical, 4 d.p.)</h3>
+        <dl class="feat" id="feat"></dl>
+        <div class="idea" id="idea"></div>
+
+        <p class="ds-note" style="margin-top:10px">Use the switch at the top of the sheet to flip between your sketch and the answer. On the answer, hover, tap or drag along the curve to read coordinates. Tap a gray point to pin its exact label, tap again to remove it.</p>
+        <div class="desmos" id="dsPractice"></div>
+        <div style="margin-top:14px">
+          <h3>How did it go?</h3>
+          <div class="rate" id="rate">
+            <button data-r="nailed">Nailed it</button>
+            <button data-r="partial">Partly</button>
+            <button data-r="missed">Missed features</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="foot">
+        <button id="prevBtn">← Previous</button>
+        <button id="nextBtn">Next question →</button>
+        <button id="reviewBtn" hidden>Review weak ones</button>
+      </div>
+      <div class="stats" id="stats"></div>
+
+    </aside>
+  </main>
+
+  <main class="bankview" id="viewBank" hidden>
+    <section class="card bank-col">
+      <h3 id="bankTitle"></h3>
+      <div class="tabs" role="tablist" id="savedTabs">
+        <button role="tab" id="tabSeen" aria-selected="true">Came up <span id="seenCount"></span></button>
+        <button role="tab" id="tabMine" aria-selected="false">Starred <span id="bankCount"></span></button>
+      </div>
+      <div class="chips" id="bankFilter"></div>
+      <ul class="bank" id="bankList"></ul>
+      <p class="bank-empty" id="bankEmpty" hidden></p>
+    </section>
+    <section class="card preview">
+      <p class="bank-empty" id="pvEmpty">Pick a question on the left to see its answer graph.</p>
+      <div id="pvBody" hidden>
+        <div class="qmeta"><span class="pill" id="pvLevel"></span><span class="pill" id="pvSrc"></span><button class="star" id="pvSave" aria-pressed="false" style="margin-left:auto">☆ Save</button></div>
+        <div class="eq math" id="pvEq"></div>
+        <p class="qnote" id="pvNote" hidden></p>
+        <div class="pv-sheet" id="pvSheet"><canvas id="cPv"></canvas><div class="legend" id="pvLegend" hidden></div></div>
+        <div class="pv-grid">
+          <dl class="feat" id="pvFeat"></dl>
+          <div class="idea" id="pvIdea"></div>
+        </div>
+        <div class="desmos" id="dsPreview"></div>
+        <div class="foot" style="margin-top:12px">
+          <button class="primary" id="pvPractise">Practise this (answer hidden)</button>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script id="core">
+'use strict';
+/* ================= math helpers ================= */
+const PI=Math.PI, TAU=2*PI;
+const isF=Number.isFinite;
+const M='−';
+const X='<i>x</i>', YV='<i>y</i>';
+const sup=(b,e)=>`${b}<sup>${e}</sup>`;
+const fr=(n,d)=>`<span class="fr"><span>${n}</span><span>${d}</span></span>`;
+const op=n=>`<span class="op">${n}</span>`;
+const SIN=op('sin'), COS=op('cos'), TAN=op('tan'), LN=op('ln');
+const ATAN=op('tan')+'<sup>−1</sup>', ASIN=op('sin')+'<sup>−1</sup>', ACOS=op('cos')+'<sup>−1</sup>';
+const ex=e=>`e<sup>${e}</sup>`;
+const rt=s=>`√<span class="ov">${s}</span>`;
+const ab=s=>`|${s}|`;
+const par=s=>`(${s})`;
+const num=n=>String(n).replace('-',M);
+const lin=a=>a===0?X:`${X} ${a>0?M:'+'} ${Math.abs(a)}`;   /* x − a */
+const fac=a=>a===0?X:par(lin(a));
+const lw=a=>a===0?'x':(a>0?`(x-${a})`:`(x+${-a})`);       /* wolfram form */
+function quad(b,c){let s=sup(X,2);if(b)s+=` ${b>0?'+':M} ${Math.abs(b)===1?'':Math.abs(b)}${X}`;if(c)s+=` ${c>0?'+':M} ${Math.abs(c)}`;return s}
+
+/* seeded rng */
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function RNG(seed){const r=mulberry(seed);return{f:r,int:(a,b)=>a+Math.floor(r()*(b-a+1)),pick:arr=>arr[Math.floor(r()*arr.length)],coin:(p=.5)=>r()<p}}
+
+/* ================= question bank ================= */
+const GS='Gravell sheet', IL='Interview lists';
+const BANK=[
+{id:'b1',lvl:1,src:GS,eq:fr(1,X)+' + '+X,f:x=>1/x+x,x:[-4,4],y:[-7,7],wa:'1/x + x',
+ idea:'Odd function. Near 0 the 1/x term dominates; for large |x| the curve hugs y = x (oblique asymptote). AM–GM gives the minimum y = 2 at x = 1 for x > 0.'},
+{id:'b2',lvl:1,src:GS,eq:'7 + 3 '+COS+'(2'+X+' + π/2)',f:x=>7+3*Math.cos(2*x+PI/2),x:[-PI,2*PI],y:[-1,11],pi:true,wa:'7+3cos(2x+pi/2)',
+ idea:'cos(θ + π/2) = −sin θ, so y = 7 − 3 sin 2x. Period π, centre line y = 7, range 4 to 10.'},
+{id:'b3',lvl:1,src:GS,eq:fr(X+' − 1',sup(X,2)),f:x=>(x-1)/(x*x),x:[-4,8],y:[-5,1.5],wa:'(x-1)/x^2',
+ idea:'Write it as 1/x − 1/x². Near 0 the −1/x² term wins, so y → −∞ on both sides. Zero at x = 1, maximum at x = 2 (y = 1/4), then y → 0 from above. For x → −∞, y → 0 from below.'},
+{id:'b4',lvl:1,src:GS,kind:'pm',lhs:sup(YV,2),eq:fr(X+' − 1',sup(X,2)),note:'for x ≥ 0',g:x=>x>=0?(x-1)/(x*x):NaN,x:[-1,10],y:[-1,1],wa:'(x-1)/x^2',
+ idea:'Use the previous sketch. Real only where (x − 1)/x² ≥ 0, so x ≥ 1. Take ±√ of it: meets the axis vertically at x = 1, max height 1/2 at x = 2, then decays to 0. Symmetric about the x-axis.'},
+{id:'b5',lvl:1,src:GS,kind:'multi',disp:`${YV} = ${TAN} ${X}<span class="and">and</span>${YV} = ${ATAN} ${X}`,note:'on the same axes, for 0 ≤ x ≤ π/2',equal:true,
+ fs:[{f:x=>x>=0&&x<=PI/2?Math.tan(x):NaN,l:'tan x'},{f:x=>x>=0&&x<=PI/2?Math.atan(x):NaN,l:'tan⁻¹ x'},{f:x=>x,l:'y = x',guide:true}],x:[-.2,1.8],y:[-.2,3.2],
+ waFull:'plot tan(x), arctan(x), x from x=0 to pi/2',
+ idea:'tan⁻¹ is the reflection of tan in y = x. Both have gradient 1 at the origin, and tan x > x > tan⁻¹ x for x > 0. tan → ∞ at π/2, while tan⁻¹(π/2) ≈ 1.0039.'},
+{id:'b6',lvl:1,src:GS,eq:fr(SIN+' '+X,X),f:x=>Math.sin(x)/x,x:[-4*PI,4*PI],y:[-.5,1.2],pi:true,wa:'sin(x)/x',
+ idea:'Even. sin x ≈ x near 0, so y → 1 (a hole at x = 0). Zeros at x = nπ, n ≠ 0. Trapped between y = ±1/x, which it touches near each peak.'},
+{id:'b7',lvl:1,src:GS,eq:SIN+'('+sup(X,2)+')',f:x=>Math.sin(x*x),x:[-3.6,3.6],y:[-1.5,1.5],wa:'sin(x^2)',
+ idea:'Even. Zeros where x² = nπ, so x = ±√(nπ): they get closer together as |x| grows. Flat at the origin (y ≈ x²).'},
+{id:'b8',lvl:1,src:GS,eq:SIN+' '+X+' + '+COS+' '+X,f:x=>Math.sin(x)+Math.cos(x),x:[-2*PI,2*PI],y:[-2,2],pi:true,wa:'sin(x)+cos(x)',
+ idea:'R-form: √2 sin(x + π/4). Amplitude √2 ≈ 1.4142, period 2π, the sine curve shifted left by π/4.'},
+{id:'b9',lvl:1,src:GS,eq:sup(SIN,2)+X+' + '+sup(COS,2)+X,f:x=>Math.sin(x)**2+Math.cos(x)**2,x:[-2*PI,2*PI],y:[-.5,1.5],pi:true,wa:'sin(x)^2+cos(x)^2',
+ idea:'Trick question: it is the identity, so y = 1 for all x.'},
+{id:'b10',lvl:1,src:GS,eq:sup(COS,'−2')+'(2'+X+')',f:x=>1/Math.cos(2*x)**2,x:[-PI,PI],y:[-1,6],pi:true,wa:'1/cos(2x)^2',
+ idea:'This is sec²(2x). Always ≥ 1, with minimum 1 where cos 2x = ±1 (x = nπ/2). Vertical asymptotes where cos 2x = 0: x = π/4 + nπ/2. Period π/2.'},
+{id:'b11',lvl:2,src:IL,eq:sup(X,X),note:'for x > 0',f:x=>x>0?Math.pow(x,x):NaN,x:[-.3,2.2],y:[-.3,4],wa:'x^x',
+ idea:'Write it as e^(x ln x). As x → 0⁺, x ln x → 0, so y → 1. Minimum where ln x + 1 = 0: x = 1/e, y = e^(−1/e) ≈ 0.6922. Grows super-fast after that.'},
+{id:'b12',lvl:2,src:IL,eq:X+' '+LN+' '+X,f:x=>x>0?x*Math.log(x):NaN,x:[-.3,2.5],y:[-.6,2.5],wa:'x ln(x)',
+ idea:'Only x > 0. x ln x → 0 as x → 0⁺ (x wins). Zero at x = 1, minimum at x = 1/e where y = −1/e. Gradient ln x + 1 → −∞ at 0, so it leaves the origin steeply downwards.'},
+{id:'b13',lvl:3,src:IL,eq:SIN+'(1/'+X+')',f:x=>Math.sin(1/x),x:[-2,2],y:[-1.4,1.4],wa:'sin(1/x)',
+ idea:'Odd. For large |x|, sin(1/x) ≈ 1/x so y → 0 like a hyperbola. Zeros at x = 1/(nπ), crowding into 0, where it oscillates infinitely fast between ±1 with no limit.'},
+{id:'b14',lvl:3,src:IL,kind:'implicit',disp:`(${sup(YV,2)} − 2)<sup>2</sup> + (${sup(X,2)} − 2)<sup>2</sup> = 2`,F:(x,y)=>(y*y-2)**2+(x*x-2)**2-2,x:[-2.3,2.3],y:[-2.3,2.3],equal:true,
+ waFull:'plot (y^2-2)^2+(x^2-2)^2=2',
+ idea:'Let u = x², v = y². Then (u − 2)² + (v − 2)² = 2 is a circle centred (2, 2) with radius √2, sitting inside u, v > 0 (u from 2 − √2 ≈ 0.5858 to 2 + √2 ≈ 3.4142). Each (u, v) gives four points (±√u, ±√v), so the curve is four closed loops, one per quadrant, symmetric in both axes and in y = x.'},
+{id:'b15',lvl:2,src:IL,eq:fr(LN+' '+X,X),f:x=>Math.log(x)/x,x:[-.5,12],y:[-3,1],wa:'ln(x)/x',
+ idea:'Only x > 0. y → −∞ as x → 0⁺. Zero at x = 1. Maximum where 1 − ln x = 0: x = e, y = 1/e. Then y → 0 (x beats ln x). Classic use: it shows e^π > π^e.'},
+{id:'b16',lvl:2,src:IL,eq:X+' '+SIN+' '+X,f:x=>x*Math.sin(x),x:[-4*PI,4*PI],pi:true,wa:'x sin(x)',
+ idea:'Even (odd × odd). Draw the envelope y = ±x; the curve touches it where sin x = ±1. Zeros at nπ, with a double zero (touch) at 0 since y ≈ x².'},
+{id:'b17',lvl:2,src:IL,eq:X+'('+LN+' '+X+')<sup>2</sup>',f:x=>x>0?x*Math.log(x)**2:NaN,x:[-.3,3],y:[-.2,1.4],wa:'x (ln x)^2',
+ idea:'Only x > 0, and y ≥ 0 everywhere. Touches 0 at x = 1 (double root). y → 0 as x → 0⁺. Gradient ln x(ln x + 2) is 0 at x = 1 (min) and x = e⁻² (max, y = 4e⁻² ≈ 0.5413).'},
+{id:'b18',lvl:2,src:IL,eq:LN+'('+SIN+' '+X+')',f:x=>Math.log(Math.sin(x)),x:[-PI,3*PI],y:[-5,1],pi:true,wa:'ln(sin(x))',
+ idea:'Only where sin x > 0: x in (2nπ, (2n + 1)π). Max y = 0 at x = π/2 + 2nπ (touches the axis), never positive. y → −∞ at both ends of every interval.'},
+{id:'b19',lvl:2,src:IL,eq:ex(M+X)+' '+SIN+' '+X,f:x=>Math.exp(-x)*Math.sin(x),x:[-PI,3*PI],pi:true,wa:'exp(-x) sin(x)',
+ idea:'Draw the envelope ±e^(−x) first. Zeros at nπ. Decays to 0 on the right, oscillates with growing size on the left.'},
+{id:'b20',lvl:3,src:IL,eq:SIN+'('+ex(M+X)+')',f:x=>Math.sin(Math.exp(-x)),x:[-3,4],y:[-1.4,1.4],wa:'sin(exp(-x))',
+ idea:'As x → ∞, e^(−x) → 0, so y → 0 (like e^(−x)). As x → −∞ the argument grows exponentially, so oscillations get faster and faster to the left. Zeros where e^(−x) = nπ, x = −ln(nπ).'},
+{id:'b21',lvl:2,src:IL,eq:'A(1 − '+ex(M+'B'+sup(X,2))+')',note:'Use A = 2, B = 1, then say how A and B change it.',f:x=>2*(1-Math.exp(-x*x)),x:[-4,4],y:[-.5,2.6],wa:'2(1-exp(-x^2))',
+ idea:'Even. Near 0, 1 − e^(−Bx²) ≈ Bx², so it starts like the parabola ABx². Tends to A as |x| → ∞ (horizontal asymptote y = A): an upside-down bell. B stretches it horizontally, A vertically.'},
+{id:'b22',lvl:2,src:IL,eq:SIN+' '+X+' − '+SIN+' 2'+X,f:x=>Math.sin(x)-Math.sin(2*x),x:[-PI,3*PI],pi:true,wa:'sin(x)-sin(2x)',
+ idea:'Period 2π, odd. Factor: sin x(1 − 2 cos x), so zeros at nπ and where cos x = 1/2 (x = ±π/3 + 2nπ). Sketch both waves and subtract.'},
+{id:'b23',lvl:1,src:IL,kind:'multi',disp:`${fr(1,X)}, ${fr(1,sup(X,2))}<span class="and">and</span>${fr(1,'1 + '+sup(X,2))}`,note:'on the same axes',
+ fs:[{f:x=>1/x,l:'1/x'},{f:x=>1/(x*x),l:'1/x²'},{f:x=>1/(1+x*x),l:'1/(1+x²)'}],x:[-4,4],y:[-4,4],waFull:'plot 1/x, 1/x^2, 1/(1+x^2) from -4 to 4',
+ idea:'1/x is odd; 1/x² is even and positive. 1/(1 + x²) has no asymptote: max 1 at 0. All three → 0 at ±∞. 1/x² and 1/(1 + x²) cross nowhere (1/x² is always bigger), while 1/x meets 1/x² at (1, 1).'},
+{id:'b24',lvl:1,src:IL,kind:'multi',disp:`${YV} = ${sup(X,3)}<span class="and">and</span>${YV} = ${sup(X,5)}`,note:'on the same axes',
+ fs:[{f:x=>x**3,l:'x³'},{f:x=>x**5,l:'x⁵'}],x:[-1.6,1.6],y:[-3,3],waFull:'plot x^3, x^5 from -1.6 to 1.6',
+ idea:'Both odd and through (−1, −1), (0, 0), (1, 1). For |x| < 1, x⁵ is flatter (closer to 0); for |x| > 1, x⁵ is steeper. Both have a stationary inflection at 0.'},
+{id:'b25',lvl:1,src:IL,kind:'multi',disp:`${YV} = ${ex(X)}, ${YV} = ${LN} ${X}<span class="and">and</span>${YV} = ${X}`,note:'on the same axes',equal:true,
+ fs:[{f:Math.exp,l:'eˣ'},{f:Math.log,l:'ln x'},{f:x=>x,l:'y = x',guide:true}],x:[-4,5],y:[-4,5],waFull:'plot e^x, ln(x), x from -4 to 5',
+ idea:'ln x is the reflection of eˣ in y = x. eˣ > x > ln x everywhere, so neither curve meets the line, and eˣ = ln x has no solution.'},
+{id:'b26',lvl:1,src:IL,kind:'multi',disp:`${SIN} ${X}, ${SIN} 2${X}<span class="and">and</span>${SIN} 3${X}`,note:'on the same axes',pi:true,
+ fs:[{f:Math.sin,l:'sin x'},{f:x=>Math.sin(2*x),l:'sin 2x'},{f:x=>Math.sin(3*x),l:'sin 3x'}],x:[-.3,2*PI+.3],y:[-1.5,1.5],waFull:'plot sin(x), sin(2x), sin(3x) from 0 to 2pi',
+ idea:'Same amplitude, periods 2π, π and 2π/3. All pass through 0, π and 2π. sin kx fits k full waves into [0, 2π].'},
+{id:'b27',lvl:2,src:IL,eq:'(x − R(x))<sup>2</sup>',disp:`f(${X}) = (${X} − R(${X}))<sup>2</sup>`,note:'R(x) is x rounded to the nearest integer.',f:x=>(x-Math.round(x))**2,x:[-3,3],y:[-.1,.4],wa:'(x-round(x))^2',
+ idea:'x − R(x) is the signed distance to the nearest integer: a sawtooth between −1/2 and 1/2, jumping at half-integers. Squaring gives a row of parabolic arcs: 0 at integers, peaks of 1/4 at half-integers, with corners there. Period 1.'},
+{id:'b28',lvl:3,src:IL,disp:`g(${X}) = f(1/${X})`,note:'where f(x) = (x − R(x))² and R(x) is x rounded to the nearest integer.',f:x=>{const u=1/x;return (u-Math.round(u))**2},x:[-3,3],y:[-.05,.32],wa:'(1/x-round(1/x))^2',
+ idea:'For |x| > 2, 1/x is small so R(1/x) = 0 and g = 1/x² → 0. Zeros where 1/x is an integer: x = ±1, ±1/2, ±1/3, … crowding into 0. Peaks of 1/4 where 1/x is a half-integer (x = ±2, ±2/3, ±2/5, …). Infinitely many arcs squeezed near 0; g is undefined at 0.'},
+{id:'b29',lvl:3,src:IL,kind:'param',disp:`${X} = ${COS} φ,&ensp;${YV} = ${SIN} φ`,note:'where φ = e^θ/(1 + e^θ) and θ takes all real values.',
+ px:t=>Math.cos(Math.exp(t)/(1+Math.exp(t))),py:t=>Math.sin(Math.exp(t)/(1+Math.exp(t))),t:[-40,40],x:[-1.4,1.4],y:[-1.4,1.4],equal:true,
+ marks:[{x:1,y:0,open:true},{x:Math.cos(1),y:Math.sin(1),open:true}],guideCircle:true,waFull:'parametric plot (cos(e^t/(1+e^t)), sin(e^t/(1+e^t))) for t from -20 to 20',
+ idea:'Ignore θ and look at φ. e^θ/(1 + e^θ) is the logistic function: it takes every value in (0, 1) but never 0 or 1. So the point is (cos φ, sin φ) on the unit circle with 0 < φ < 1 radian: an open arc from (1, 0) to (cos 1, sin 1) ≈ (0.5403, 0.8415), endpoints not included.'},
+{id:'b30',lvl:2,src:IL,kind:'param',disp:`${X} = ${SIN} <i>t</i>,&ensp;${YV} = ${SIN} 2<i>t</i>`,px:Math.sin,py:t=>Math.sin(2*t),t:[0,TAU],x:[-1.5,1.5],y:[-1.4,1.4],equal:true,
+ waFull:'parametric plot (sin t, sin 2t)',
+ idea:'y = 2 sin t cos t = ±2x√(1 − x²). A figure-of-eight through the origin with |x| ≤ 1, |y| ≤ 1. Max y = 1 at x = ±1/√2 ≈ ±0.7071. Crosses itself at the origin with gradients ±2.'},
+{id:'b31',lvl:3,src:IL,kind:'implicit',disp:`${sup(X,YV)} = ${sup(YV,X)}`,note:'for x, y > 0',F:(x,y)=>(x>0&&y>0)?y*Math.log(x)-x*Math.log(y):NaN,x:[-.4,6],y:[-.4,6],equal:true,
+ waFull:'plot x^y = y^x for x from 0 to 6, y from 0 to 6',
+ idea:'Take logs: (ln x)/x = (ln y)/y. Every point on y = x works. ln t / t rises to a max at t = e and then falls, so each x > 1 (x ≠ e) has one other partner. That gives a second curve crossing y = x at (e, e), through (2, 4) and (4, 2), with asymptotes x = 1 and y = 1.'},
+{id:'b32',lvl:2,src:IL,kind:'implicit',disp:`${sup(X,'2/3')} + ${sup(YV,'2/3')} = 1`,F:(x,y)=>Math.cbrt(x*x)+Math.cbrt(y*y)-1,x:[-1.4,1.4],y:[-1.4,1.4],equal:true,
+ waFull:'plot x^(2/3)+y^(2/3)=1',
+ idea:'Symmetric in both axes and in y = x. Hits the axes at (±1, 0) and (0, ±1) with cusps there. Parametrise as x = cos³t, y = sin³t. It curves inwards, unlike the circle x² + y² = 1.'},
+{id:'b33',lvl:2,src:IL,eq:ex(X)+' '+SIN+' '+X,f:x=>Math.exp(x)*Math.sin(x),x:[-3*PI,PI],pi:true,wa:'exp(x) sin(x)',
+ idea:'Envelope ±eˣ. Zeros at nπ. Oscillations die away to the left (y → 0) and grow to the right. It is a product, not a sum, so it is squeezed between ±eˣ rather than added on.'},
+{id:'b34',lvl:3,src:IL,disp:`${YV} = f(f(${X}))`,note:'where f(x) = 4x(1 − x).',f:x=>{const u=4*x*(1-x);return 4*u*(1-u)},x:[-.2,1.2],y:[-.4,1.3],wa:'4(4x(1-x))(1-4x(1-x))',
+ idea:'On [0, 1], f goes 0 → 1 → 0. So f(f(x)) runs through the whole of f twice: up to 1 where f(x) = 1/2, down to 0 at x = 1/2, then up and down again. Two humps of height 1. Outside [0, 1], f < 0 so f(f(x)) → −∞ very fast.'},
+{id:'b35',lvl:3,src:IL,eq:sup(X,'1/2')+' '+SIN+'(1/'+X+')',f:x=>Math.sqrt(x)*Math.sin(1/x),x:[-.1,3],y:[-1,1],wa:'sqrt(x) sin(1/x)',
+ idea:'Only x > 0. The envelope ±√x squeezes it to 0 as x → 0⁺, with infinitely many oscillations. For large x, sin(1/x) ≈ 1/x so y ≈ 1/√x → 0.'},
+{id:'b36',lvl:1,src:IL,eq:sup(X,3)+' − 3'+X,f:x=>x**3-3*x,x:[-3,3],wa:'x^3-3x',
+ idea:'Odd cubic. Zeros at 0 and ±√3. Gradient 3x² − 3 = 0 at x = ±1: max (−1, 2), min (1, −2).'},
+{id:'b37',lvl:1,src:IL,eq:fr(sup(X,2)+' − 1',sup(X,2)+' + 1'),f:x=>(x*x-1)/(x*x+1),x:[-5,5],y:[-1.4,1.4],wa:'(x^2-1)/(x^2+1)',
+ idea:'Even, bottom never 0 so no vertical asymptotes. Write it as 1 − 2/(x² + 1): min −1 at x = 0, zeros at ±1, y → 1 from below.'},
+{id:'b38',lvl:2,src:IL,eq:fr(X,LN+' '+X),f:x=>x/Math.log(x),x:[-.3,9],y:[-6,8],wa:'x/ln(x)',
+ idea:'Only x > 0, x ≠ 1. Vertical asymptote x = 1. As x → 0⁺, y → 0 from below. Gradient (ln x − 1)/(ln x)², so a minimum at x = e with y = e. Grows slowly after that.'},
+{id:'b39',lvl:3,src:IL,eq:X+' '+SIN+'(1/'+X+')',f:x=>x*Math.sin(1/x),x:[-1.5,1.5],y:[-.4,1.2],wa:'x sin(1/x)',
+ idea:'Even. Trapped between y = ±|x|, so y → 0 as x → 0 (squeeze), with infinitely many wiggles. Zeros at x = 1/(nπ). For large |x|, sin(1/x) ≈ 1/x so y → 1.'},
+{id:'b40',lvl:2,src:IL,eq:fr(LN+' '+X,sup(X,2)),f:x=>Math.log(x)/(x*x),x:[-.3,6],y:[-3,.6],wa:'ln(x)/x^2',
+ idea:'Only x > 0. y → −∞ as x → 0⁺. Zero at x = 1. Gradient (1 − 2 ln x)/x³, so a maximum at x = √e with y = 1/(2e). Then y → 0.'},
+{id:'b41',lvl:2,src:IL,eq:fr(TAN+' '+X,X),f:x=>Math.tan(x)/x,x:[-2*PI,2*PI],y:[-6,6],pi:true,wa:'tan(x)/x',
+ idea:'Even. tan x ≈ x near 0, so y → 1 (a hole at the origin). Vertical asymptotes where tan x does: x = π/2 + nπ. Zeros at x = nπ, n ≠ 0. Decays like tan x / x between asymptotes.'},
+{id:'b42',lvl:3,src:IL,eq:fr(1,'1 + '+ex('1/'+X)),f:x=>1/(1+Math.exp(1/x)),x:[-5,5],y:[-.3,1.3],wa:'1/(1+e^(1/x))',
+ idea:'As x → 0⁺, e^(1/x) → ∞ so y → 0; as x → 0⁻, e^(1/x) → 0 so y → 1: a jump at 0. As |x| → ∞, e^(1/x) → 1 so y → 1/2. Increasing on each side.'},
+{id:'b43',lvl:2,src:IL,kind:'multi',disp:`${YV} = ${sup('2',X)}<span class="and">and</span>${YV} = ${sup(X,2)}`,note:'on the same axes. Where do they meet?',
+ fs:[{f:x=>2**x,l:'2ˣ'},{f:x=>x*x,l:'x²'}],x:[-3,5.5],y:[-2,22],waFull:'plot 2^x, x^2 from -3 to 5.5',
+ idea:'They meet at x = 2 and x = 4 (2² = 4, 2⁴ = 16) and once more for negative x (about −0.7667). x² is bigger between 2 and 4; 2ˣ wins for large x.'},
+{id:'b44',lvl:3,src:IL,kind:'pm',lhs:sup(YV,2),eq:sup(X,2)+'('+X+' + 1)',g:x=>x*x*(x+1),x:[-2,2],y:[-2.5,2.5],equal:true,wa:'x^2(x+1)',
+ idea:'Real for x ≥ −1. y = ±x√(x + 1): the two branches cross at the origin (a node, gradients ±1), make a loop on [−1, 0] meeting the axis vertically at x = −1, then open out for x > 0.'},
+{id:'b45',lvl:2,src:IL,kind:'param',disp:`${X} = ${COS} <i>t</i>,&ensp;${YV} = ${SIN} 3<i>t</i>`,px:Math.cos,py:t=>Math.sin(3*t),t:[0,TAU],x:[-1.5,1.5],y:[-1.4,1.4],equal:true,
+ waFull:'parametric plot (cos t, sin 3t)',idea:'x goes once across [−1, 1] and back while y does three full waves, so you get a curve with three humps each way that crosses itself. Symmetric about the y-axis (t → π − t).'},
+{id:'b46',lvl:2,src:IL,eq:sup(X,2)+' '+ex(M+X),f:x=>x*x*Math.exp(-x),x:[-1.5,8],y:[-.2,1.2],wa:'x^2 e^(-x)',
+ idea:'Never negative. Touches 0 at x = 0 (double root). Gradient x(2 − x)e^(−x): max at x = 2 with y = 4/e². y → 0 as x → ∞, y → ∞ as x → −∞.'},
+{id:'b47',lvl:2,src:IL,eq:X+' − ⌊'+X+'⌋',note:'⌊x⌋ is the floor: the largest integer ≤ x.',f:x=>x-Math.floor(x),x:[-3,3],y:[-.4,1.4],wa:'x-floor(x)',
+ idea:'The fractional part of x. On each [n, n + 1) it is the line y = x − n, rising from 0 towards 1, then jumping back to 0. Sawtooth, period 1, filled dot at the start of each tooth, open dot at the end.'},
+{id:'b48',lvl:3,src:IL,eq:fr(SIN+' '+X,'1 − '+COS+' '+X),f:x=>Math.sin(x)/(1-Math.cos(x)),x:[-2*PI,2*PI],y:[-6,6],pi:true,wa:'sin(x)/(1-cos(x))',
+ idea:'Use half-angles: sin x = 2 sin(x/2) cos(x/2) and 1 − cos x = 2 sin²(x/2), so y = cot(x/2). Odd, period 2π, asymptotes at x = 2nπ, zeros at x = π + 2nπ, always decreasing.'},
+{id:'b49',lvl:1,src:IL,eq:rt(X+'(4 − '+X+')'),f:x=>Math.sqrt(x*(4-x)),x:[-1,5],y:[-1,3],equal:true,wa:'sqrt(x(4-x))',
+ idea:'Square both sides: y² = 4x − x², so (x − 2)² + y² = 4. With y ≥ 0 it is the top half of a circle, centre (2, 0), radius 2, meeting the axis vertically at x = 0 and 4.'},
+];
+
+/* ================= random generators ================= */
+const lnIdea='Sketch the inside h(x) first. ln only exists where h > 0. ln h = 0 where h = 1, and ln h → −∞ where h → 0⁺. ln is increasing, so turning points of h stay turning points at the same x.';
+const recIdea='Sketch h(x) first. Zeros of h become vertical asymptotes, places where |h| is large give y near 0, a maximum of h becomes a minimum of 1/h, and y has the same sign as h.';
+const expIdea='e to anything is positive. Where h → −∞, y → 0; where h → +∞, y blows up; h = 0 gives y = 1. Turning points are at the same x as for h.';
+
+const TPL=[
+/* 0 polynomial × exponential */
+{w:1,fn:r=>{
+  const n=r.int(1,3),m=r.pick([1,1,2]),a=r.pick([1,2,.5]);
+  const xn=n===1?X:sup(X,n), xp=m===1?X:sup(X,2);
+  const e=a===1?M+xp:a===2?M+'2'+xp:M+xp+'/2';
+  let xr;if(m===1)xr=[-1.5,(n+5)/a];else{const s=Math.sqrt(n/(2*a));xr=[-(3*s+1),3*s+1]}
+  return{eq:xn+' '+ex(e),f:x=>Math.pow(x,n)*Math.exp(-a*Math.pow(x,m)),x:xr,lvl:2,wa:`x^${n}*exp(-${a}*x^${m})`,
+   idea:`Near 0 it looks like x${n>1?'^'+n:''}, so it ${n%2?'crosses':'touches'} the axis there. An exponential beats any power, so y → 0 as ${m===2?'|x|':'x'} → ∞.${m===1?' As x → −∞ both factors grow in size, so the curve shoots off.':` It is an ${n%2?'odd':'even'} function.`} Turning point where the log-derivative is 0: ${n}/x = ${m===1?a:2*a+'x'}.`}}},
+/* 1 envelope × trig */
+{w:1.2,fn:r=>{
+  const envs=[
+   {h:ex(M+X+'/2'),f:x=>Math.exp(-x/2),x:[-PI,5*PI],d:'exp(-x/2)',pi:1},
+   {h:ex(M+X+'/4'),f:x=>Math.exp(-x/4),x:[-PI,6*PI],d:'exp(-x/4)',pi:1},
+   {h:X,f:x=>x,x:[-3*PI,3*PI],d:'x',pi:1},
+   {h:sup(X,2),f:x=>x*x,x:[-2*PI,2*PI],d:'x^2',pi:1},
+   {h:rt(X),f:Math.sqrt,x:[-.5,5*PI],d:'sqrt(x)',pi:1},
+   {h:ex(M+sup(X,2)+'/8'),f:x=>Math.exp(-x*x/8),x:[-8,8],d:'exp(-x^2/8)',hi:true},
+   {frac:true,den:'1 + '+sup(X,2),f:x=>1/(1+x*x),x:[-3*PI,3*PI],d:'1/(1+x^2)',pi:1},
+  ];
+  const E=r.pick(envs),t=r.pick(['sin','cos']),b=E.hi?r.pick([3,4]):r.pick([1,2,3]);
+  const th=op(t)+' '+(b===1?'':b)+X, tf=t==='sin'?Math.sin:Math.cos;
+  return{eq:E.frac?fr(th,E.den):E.h+' '+th,f:x=>E.f(x)*tf(b*x),x:E.x,pi:!!E.pi,lvl:2,wa:`${E.d}*${t}(${b}x)`,
+   idea:'Sketch the envelope ±E(x) first. The curve stays between them, touches them where the trig factor is ±1, and has zeros where the trig factor is 0 (plus any zeros of the envelope).'}}},
+/* 2 trig of a function */
+{w:1.2,fn:r=>{
+  const o=r.pick(['sin','cos']),z=o==='sin'?'0':'1';
+  const gs=[
+   {h:'('+sup(X,2)+')',f:x=>x*x,x:[-3.6,3.6],lvl:2,d:'x^2',i:`Even. The argument x² grows faster and faster, so the waves bunch up as |x| grows. Near 0, y ≈ ${o==='sin'?'x²':'1 − x⁴/2'}.`},
+   {h:'('+sup(X,3)+')',f:x=>x**3,x:[-2.4,2.4],lvl:2,d:'x^3',i:'The argument x³ is odd and very flat near 0, so the curve is flat there and the waves bunch up quickly for larger |x|.'},
+   {h:'(1/'+X+')',f:x=>1/x,x:[-2,2],lvl:3,d:'1/x',i:`As x → ±∞, 1/x → 0 so y → ${z}. Near 0 it oscillates infinitely fast with no limit. Zeros and peaks crowd into 0.`},
+   {h:'('+ex(X)+')',f:Math.exp,x:[-5,3],lvl:3,d:'exp(x)',i:`As x → −∞, eˣ → 0 so y → ${z}. For x > 0 the argument grows fast so the oscillations speed up.`},
+   {h:'('+ex(M+X)+')',f:x=>Math.exp(-x),x:[-3,5],lvl:3,d:'exp(-x)',i:`As x → +∞, e^(−x) → 0 so y → ${z}. To the left the argument grows fast so the oscillations speed up.`},
+   {h:' '+rt(X),f:Math.sqrt,x:[-1,60],lvl:2,d:'sqrt(x)',i:'Only x ≥ 0. The argument grows slowly, so the waves get wider and wider: zeros or peaks at x = (kπ/2)² type values.'},
+   {h:'('+LN+' '+X+')',f:Math.log,x:[-.3,30],lvl:3,d:'ln(x)',i:'Only x > 0. ln x = kπ at x = e^(kπ): infinitely many oscillations crowd towards 0, and they spread out exponentially to the right.'},
+   {h:'(π/(1 + '+sup(X,2)+'))',f:x=>PI/(1+x*x),x:[-5,5],lvl:3,d:'pi/(1+x^2)',i:`Even. The argument runs from π (at x = 0) down to 0 (at ±∞), so y passes through ${o==='sin'?'sin π = 0 at the origin, rises to 1 where the argument is π/2 (x = ±1), then decays to 0':'cos π = −1 at the origin, crosses 0 at x = ±1, then tends to 1'}.`},
+  ];
+  const g=r.pick(gs),tf=o==='sin'?Math.sin:Math.cos;
+  return{eq:op(o)+g.h,f:x=>tf(g.f(x)),x:g.x,y:[-1.4,1.4],lvl:g.lvl,wa:`${o}(${g.d})`,idea:g.i}}},
+/* 3 quotient over a power of x */
+{w:1.2,fn:r=>{
+  const ns=[
+   {h:SIN+' '+X,f:Math.sin,near:'sin x ≈ x − x³/6',trig:1,d:'sin(x)'},
+   {h:'1 − '+COS+' '+X,f:x=>1-Math.cos(x),near:'1 − cos x ≈ x²/2',trig:1,d:'(1-cos(x))'},
+   {h:LN+' '+X,f:Math.log,near:'ln x → −∞ as x → 0⁺',pos:1,d:'ln(x)'},
+   {h:ex(X),f:Math.exp,near:'eˣ ≈ 1 + x',d:'exp(x)'},
+   {h:ATAN+' '+X,f:Math.atan,near:'tan⁻¹ x ≈ x − x³/3',d:'arctan(x)'},
+   {h:ex(X)+' − 1',f:Math.expm1,near:'eˣ − 1 ≈ x',d:'(exp(x)-1)'},
+   {h:LN+'(1 + '+sup(X,2)+')',f:x=>Math.log1p(x*x),near:'ln(1 + x²) ≈ x²',d:'ln(1+x^2)'},
+  ];
+  const N=r.pick(ns);let k=r.pick([1,2,2,3]);if(N.d==='sin(x)'&&k===1)k=2;if(N.d==='(1-cos(x))'&&k===3)k=2;
+  const xr=N.trig?[-3*PI,3*PI]:N.pos?[-.5,8]:[-5,5];
+  return{eq:fr(N.h,k===1?X:sup(X,k)),f:x=>N.f(x)/Math.pow(x,k),x:xr,pi:!!N.trig,lvl:k===3?3:2,wa:`${N.d}/x^${k}`,
+   idea:`Use small-x behaviour: ${N.near}. Divide by x${k>1?'^'+k:''} to see whether there is a finite limit at 0 or an asymptote (and from which side). For large |x|, compare growth rates of top and bottom.`}}},
+/* 4 rational functions */
+{w:1.2,fn:r=>{
+  const v=r.int(0,2);
+  if(v===0){
+    const pool=[-3,-2,-1,0,1,2,3];const pick=()=>{const i=r.int(0,pool.length-1);return pool.splice(i,1)[0]};
+    const a=pick(),b0=pick(),c=pick(),d=pick();const dbl=r.coin(.3);const b=dbl?a:b0;
+    const top=dbl?(a===0?sup(X,2):sup(par(lin(a)),2)):fac(Math.min(a,b))+fac(Math.max(a,b));
+    const lo=Math.min(c,d),hi=Math.max(c,d);
+    return{eq:fr(top,fac(lo)+fac(hi)),f:x=>(x-a)*(x-b)/((x-c)*(x-d)),x:[-5.5,5.5],lvl:2,wa:`${lw(a)}${lw(b)}/(${lw(c)}${lw(d)})`,
+     idea:`Mark zeros (x = ${num(a)}${dbl?', a double root so it touches':' and x = '+num(b)}) and vertical asymptotes (x = ${num(lo)}, x = ${num(hi)}) on the axis, then do a sign table region by region. As x → ±∞, y → 1. It crosses y = 1 where top = bottom, which is a linear equation.`}}
+  if(v===1){
+    const a=r.int(-3,3);let b=r.int(-3,3);let c=r.int(-3,3);while(c===a||c===b)c=r.int(-3,3);
+    const q=c-a-b,rem=(c-a)*(c-b);
+    return{eq:fr(fac(Math.min(a,b))+fac(Math.max(a,b)),lin(c)),f:x=>(x-a)*(x-b)/(x-c),x:[-7,7],lvl:2,wa:`${lw(a)}${lw(b)}/${lw(c)}`,
+     idea:`Divide out: y = x ${q>=0?'+':M} ${Math.abs(q)} ${rem>=0?'+':M} ${Math.abs(rem)}/(x ${c>0?M:'+'} ${Math.abs(c)}). So there is an oblique asymptote y = x ${q>=0?'+':M} ${Math.abs(q)} and a vertical asymptote x = ${num(c)}. Zeros at x = ${num(a)}${a===b?' (double)':' and x = '+num(b)}.`}}
+  const k=r.pick([1,4]);
+  return{eq:fr(sup(X,3),sup(X,2)+' − '+k),f:x=>x**3/(x*x-k),x:[-5,5],lvl:2,wa:`x^3/(x^2-${k})`,
+   idea:`Odd. Vertical asymptotes at x = ±${Math.sqrt(k)}. Divide: y = x + ${k}x/(x² − ${k}), so y ≈ x for large |x|. Gradient x²(x² − ${3*k})/(x² − ${k})²: a stationary inflection at the origin and turning points where x² = ${3*k}.`}}},
+/* 5 power ± reciprocal */
+{w:.8,fn:r=>{
+  const p=r.pick([1,2,3]),q=r.pick([1,2]),k=r.pick([1,2,4,-1,-2]);
+  const pt=p===1?X:sup(X,p),qt=q===1?X:sup(X,q);
+  return{eq:`${pt} ${k>0?'+':M} ${fr(Math.abs(k),qt)}`,f:x=>Math.pow(x,p)+k/Math.pow(x,q),x:[-4,4],lvl:2,wa:`x^${p}+${k}/x^${q}`,
+   idea:`Near 0 the ${num(k)}/x${q>1?'²':''} term dominates, giving the asymptote x = 0 (check the sign on each side). For large |x| the x${p>1?'^'+p:''} term dominates, so the curve hugs y = x${p>1?'^'+p:''}. Sketch both pieces and add.`}}},
+/* 6 y² = g(x) */
+{w:1,fn:r=>{
+  const v=r.int(0,5);let o;
+  if(v===0){const a=r.int(1,2),b=a+r.int(1,3);o={eq:X+fac(a)+fac(b),g:x=>x*(x-a)*(x-b),x:[-1,b+2.5],lvl:3,wa:`x(x-${a})(x-${b})`,
+    idea:`Sketch the cubic g first. Real only where g ≥ 0: a closed oval for 0 ≤ x ≤ ${a} and an unbounded branch from x = ${b}. At simple roots the curve meets the axis vertically. Symmetric about the x-axis.`}}
+  else if(v===1){const a=r.int(1,3);o={eq:sup(X,2)+par(`${a} − ${X}`),g:x=>x*x*(a-x),x:[-2.5,a+1],equal:true,lvl:3,wa:`x^2(${a}-x)`,
+    idea:`Real for x ≤ ${a}. y = ±x√(${a} − x): two branches cross at the origin (a node, gradients ±√${a}), form a loop on [0, ${a}] that meets the axis vertically at x = ${a}, and open out for x → −∞.`}}
+  else if(v===2){const a=r.int(1,3);o={eq:fr(sup(X,3),`${a} − ${X}`),g:x=>x**3/(a-x),x:[-1,a+1.5],equal:true,lvl:3,wa:`x^3/(${a}-x)`,
+    idea:`Real for 0 ≤ x < ${a}. Near 0, y² ≈ x³/${a}, so a cusp at the origin. Vertical asymptote x = ${a}. Symmetric about the x-axis.`}}
+  else if(v===3){o={eq:sup(X,2)+' − '+sup(X,4),g:x=>x*x-x**4,x:[-1.5,1.5],equal:true,lvl:2,wa:'x^2-x^4',
+    idea:'y = ±x√(1 − x²). Symmetric in both axes: a figure-of-eight through the origin, |x| ≤ 1, max |y| = 1/2 at x = ±1/√2.'}}
+  else if(v===4){o={eq:SIN+' '+X,g:Math.sin,x:[-2*PI,3*PI],pi:true,lvl:2,wa:'sin(x)',
+    idea:'Real where sin x ≥ 0. Each hump becomes a closed oval, meeting the axis vertically at nπ (√ has infinite gradient at 0). Height ±1.'}}
+  else{const a=r.int(1,2),b=r.int(1,3);o={eq:fr(lin(a),lin(-b)),g:x=>(x-a)/(x+b),x:[-7,7],lvl:3,wa:`(x-${a})/(x+${b})`,
+    idea:`g → 1 at ±∞, so y → ±1 (two horizontal asymptotes). Real for x ≥ ${a} or x < −${b}. Vertical asymptote x = −${b}; meets the axis vertically at x = ${a}.`}}
+  return Object.assign({kind:'pm',lhs:sup(YV,2)},o)}},
+/* 7 ln of a function */
+{w:1,fn:r=>{
+  const a=r.pick([1,4]),b=r.int(2,4),c=r.int(-2,2);
+  const hs=[
+   {eq:LN+par(sup(X,2)+' − '+a),f:x=>Math.log(x*x-a),x:[-4,4],lvl:2,wa:`ln(x^2-${a})`},
+   {eq:LN+par('1 + '+sup(X,2)),f:x=>Math.log1p(x*x),x:[-4,4],lvl:2,wa:'ln(1+x^2)'},
+   {eq:LN+par(COS+' '+X),f:x=>Math.log(Math.cos(x)),x:[-2*PI,2*PI],y:[-5,1],pi:1,lvl:2,wa:'ln(cos x)'},
+   {eq:LN+'['+X+par(`${b} − ${X}`)+']',f:x=>Math.log(x*(b-x)),x:[-1,b+1],lvl:2,wa:`ln(x(${b}-x))`},
+   {eq:LN+par('1 + '+SIN+' '+X),f:x=>Math.log(1+Math.sin(x)),x:[-PI,3*PI],y:[-6,1.5],pi:1,lvl:3,wa:'ln(1+sin x)'},
+   {eq:LN+par(ex(X)+' − '+X),f:x=>Math.log(Math.exp(x)-x),x:[-5,4],lvl:3,wa:'ln(e^x-x)'},
+   {eq:LN+ab(lin(c)),f:x=>Math.log(Math.abs(x-c)),x:[c-4,c+4],lvl:2,wa:`ln(abs(${lw(c)}))`},
+   {eq:LN+par(sup(X,3)+' − '+X),f:x=>Math.log(x**3-x),x:[-2,2.5],lvl:3,wa:'ln(x^3-x)'},
+  ];
+  const h=r.pick(hs);return Object.assign({idea:lnIdea},h)}},
+/* 8 reciprocal of a function */
+{w:1,fn:r=>{
+  const qs=[[2,2],[-2,5],[1,-2],[-1,-6],[0,1],[-4,3],[2,1]],[b,c]=r.pick(qs),k=r.pick([1,4]);
+  const hs=[
+   {h:sup(X,3)+' − '+(k===1?'':k)+X,f:x=>x**3-k*x,x:[-3.5,3.5],lvl:2,wa:`1/(x^3-${k}x)`},
+   {h:quad(b,c),f:x=>x*x+b*x+c,x:[-5,6],lvl:2,wa:`1/(x^2+${b}x+${c})`},
+   {h:SIN+' '+X+' + '+COS+' '+X,f:x=>Math.sin(x)+Math.cos(x),x:[-PI,2*PI],y:[-5,5],pi:1,lvl:2,wa:'1/(sin x+cos x)'},
+   {h:'2 + '+COS+' '+X,f:x=>2+Math.cos(x),x:[-2*PI,2*PI],y:[-.3,1.3],pi:1,lvl:1,wa:'1/(2+cos x)'},
+   {h:ex(X)+' − '+X,f:x=>Math.exp(x)-x,x:[-5,4],lvl:2,wa:'1/(e^x-x)'},
+   {h:COS+' '+X+' − '+fr(1,2),f:x=>Math.cos(x)-.5,x:[-2*PI,2*PI],y:[-4,5],pi:1,lvl:2,wa:'1/(cos x-1/2)'},
+   {h:X+' − '+SIN+' '+X,f:x=>x-Math.sin(x),x:[-6,6],y:[-4,4],lvl:3,wa:'1/(x-sin x)',extra:' Here x − sin x ≈ x³/6 near 0, so y ≈ 6/x³.'},
+  ];
+  const h=r.pick(hs);return{eq:fr(1,h.h),f:x=>1/h.f(x),x:h.x,y:h.y,pi:!!h.pi,lvl:h.lvl,wa:h.wa,idea:recIdea+(h.extra||'')}}},
+/* 9 exponential of a function */
+{w:1,fn:r=>{
+  if(r.coin(.2))return{eq:X+' '+ex('1/'+X),f:x=>x*Math.exp(1/x),x:[-5,5],y:[-5,8],lvl:3,wa:'x e^(1/x)',
+    idea:'For large |x|, e^(1/x) ≈ 1 + 1/x, so y ≈ x + 1 (oblique asymptote). As x → 0⁺, y → ∞; as x → 0⁻, y → 0. Minimum at x = 1 where y = e.'};
+  const hs=[
+   {e:'1/'+X,f:x=>1/x,x:[-4,4],y:[-.5,6],lvl:3,wa:'e^(1/x)',t:' From the right of 0, y → ∞; from the left, y → 0. y → 1 as x → ±∞.'},
+   {e:M+'1/'+sup(X,2),f:x=>-1/(x*x),x:[-4,4],y:[-.3,1.3],lvl:3,wa:'e^(-1/x^2)',t:' Even, and extremely flat at 0 (every derivative is 0 there). Always below 1, tends to 1 as |x| → ∞.'},
+   {e:SIN+' '+X,f:Math.sin,x:[-2*PI,2*PI],y:[-.3,3.2],pi:1,lvl:2,wa:'e^(sin x)',t:' Period 2π, between 1/e and e, max at π/2.'},
+   {e:M+'1/'+X,f:x=>-1/x,x:[-4,4],y:[-.5,6],lvl:3,wa:'e^(-1/x)'},
+   {e:'1/(1 − '+sup(X,2)+')',f:x=>1/(1-x*x),x:[-3,3],y:[-.5,8],lvl:3,wa:'e^(1/(1-x^2))',t:' Inside |x| < 1, h ≥ 1 so y ≥ e and blows up at ±1. Outside, h < 0 so 0 < y < 1, with y → 0 as x → ±1 from outside.'},
+   {e:X+' − '+sup(X,2),f:x=>x-x*x,x:[-2,3],lvl:2,wa:'e^(x-x^2)',t:' A bell shape with its peak at x = 1/2.'},
+   {e:COS+' 2'+X,f:x=>Math.cos(2*x),x:[-PI,PI],y:[-.3,3.2],pi:1,lvl:2,wa:'e^(cos 2x)'},
+  ];
+  const h=r.pick(hs);return{eq:ex(h.e),f:x=>Math.exp(h.f(x)),x:h.x,y:h.y,pi:!!h.pi,lvl:h.lvl,wa:h.wa,idea:expIdea+(h.t||'')}}},
+/* 10 modulus */
+{w:.8,fn:r=>{
+  const v=r.int(0,5),a=r.int(1,2),b=r.int(1,2);
+  if(v===0){const k=r.pick([1,4]);return{eq:ab(sup(X,2)+' − '+k),f:x=>Math.abs(x*x-k),x:[-3.5,3.5],lvl:1,wa:`abs(x^2-${k})`,idea:'Sketch x² − k, then reflect the part below the axis upwards. Corners where it hits the axis.'}}
+  if(v===1)return{eq:ab(X+fac(a)+fac(-b)),f:x=>Math.abs(x*(x-a)*(x+b)),x:[-b-1.5,a+1.5],lvl:2,wa:`abs(x(x-${a})(x+${b}))`,idea:'Sketch the cubic, then reflect every part below the axis upwards. Corners at the three roots; the local min of the cubic becomes a local max.'};
+  if(v===2)return{eq:SIN+' '+ab(X),f:x=>Math.sin(Math.abs(x)),x:[-3*PI,3*PI],y:[-1.5,1.5],pi:true,lvl:2,wa:'sin(abs(x))',idea:'Even. For x ≥ 0 it is sin x; reflect that half in the y-axis. Corner (not smooth) at the origin, not periodic overall.'};
+  if(v===3){const p=r.int(1,2),q=p+r.int(1,2);return{eq:par(ab(X)+' − '+p)+par(ab(X)+' − '+q),f:x=>(Math.abs(x)-p)*(Math.abs(x)-q),x:[-(q+1.5),q+1.5],lvl:2,wa:`(abs(x)-${p})(abs(x)-${q})`,idea:`Even: sketch the parabola (x − ${p})(x − ${q}) for x ≥ 0 and reflect it in the y-axis. Four zeros ±${p}, ±${q}; a corner on the y-axis at y = ${p*q}.`}}
+  if(v===4)return{eq:ab(lin(a))+' − '+ab(lin(-b)),f:x=>Math.abs(x-a)-Math.abs(x+b),x:[-6,6],y:[-5,5],lvl:2,wa:`abs(x-${a})-abs(x+${b})`,idea:`Piecewise linear: split at x = −${b} and x = ${a}. Constant ${a+b} on the left, constant −${a+b} on the right, a straight ramp of gradient −2 in between.`};
+  return{eq:ab(LN+' '+X),f:x=>Math.abs(Math.log(x)),x:[-.3,5],y:[-.5,3],lvl:2,wa:'abs(ln x)',idea:'Reflect the negative part of ln x (0 < x < 1) upwards: y → ∞ as x → 0⁺, a corner at (1, 0), then it is just ln x.'}}},
+/* 11 trig combinations */
+{w:1,fn:r=>{
+  const k=r.pick([2,3]),m=r.pick([6,8,10]);
+  const L=[
+   {eq:SIN+' '+X+' + '+fr(1,k)+' '+SIN+' '+k+X,f:x=>Math.sin(x)+Math.sin(k*x)/k,x:[-2*PI,2*PI],lvl:2,wa:`sin x + sin(${k}x)/${k}`,idea:'Start with sin x and add a smaller, faster wave. Odd, period 2π. The small wave makes the peaks lean or flatten; check x = π/2 and x = π to fix the shape.'},
+   {eq:SIN+' '+X+' '+SIN+' '+m+X,f:x=>Math.sin(x)*Math.sin(m*x),x:[-2*PI,2*PI],lvl:2,wa:`sin x sin(${m}x)`,idea:`sin x acts as a slow envelope: a fast wave of period 2π/${m} squeezed between ±sin x, pinching to 0 at every multiple of π (beats). Even (odd × odd).`},
+   {eq:SIN+' '+X+' + '+COS+' 2'+X,f:x=>Math.sin(x)+Math.cos(2*x),x:[-2*PI,2*PI],lvl:2,wa:'sin x + cos 2x',idea:'Use cos 2x = 1 − 2 sin²x: y = 1 + s − 2s² with s = sin x, a quadratic in s with max 9/8 at s = 1/4. Range −2 to 9/8, period 2π.'},
+   {eq:fr(SIN+' '+X,'2 + '+COS+' '+X),f:x=>Math.sin(x)/(2+Math.cos(x)),x:[-2*PI,2*PI],y:[-1,1],lvl:2,wa:'sin x/(2+cos x)',idea:'Odd, period 2π, and the bottom is never 0 (between 1 and 3). Gradient (2 cos x + 1)/(2 + cos x)², so the max is at x = 2π/3 with y = 1/√3 ≈ 0.5774.'},
+   {eq:COS+' '+X+' + '+fr(X,2),f:x=>Math.cos(x)+x/2,x:[-2*PI,2*PI],lvl:2,wa:'cos x + x/2',idea:'Draw y = x/2, then ride a cos wave on top of it. Gradient 1/2 − sin x is 0 where sin x = 1/2, giving turning points; the overall trend follows y = x/2.'},
+   {eq:TAN+' '+X+' '+SIN+' '+X,f:x=>Math.tan(x)*Math.sin(x),x:[-2*PI,2*PI],y:[-6,6],lvl:3,wa:'tan x sin x',idea:'It equals sin²x/cos x. Even, period 2π, asymptotes where cos x = 0. Its sign follows cos x: ≥ 0 when cos x > 0 (touching 0 at x = 2nπ), ≤ 0 between π/2 and 3π/2 (touching 0 at x = π).'},
+  ];
+  return Object.assign({pi:true},r.pick(L))}},
+/* 12 inverse trig */
+{w:.8,fn:r=>{
+  const L=[
+   {eq:ATAN+'(1/'+X+')',f:x=>Math.atan(1/x),x:[-5,5],y:[-2,2],lvl:3,wa:'arctan(1/x)',idea:'Odd. As x → 0⁺, 1/x → +∞ so y → π/2; as x → 0⁻, y → −π/2: a jump at 0. y → 0 as |x| → ∞. For x > 0 it equals π/2 − tan⁻¹ x.'},
+   {eq:ATAN+' '+X+' − '+X,f:x=>Math.atan(x)-x,x:[-4,4],lvl:2,wa:'arctan(x)-x',idea:'Odd. Near 0, tan⁻¹ x ≈ x − x³/3 so y ≈ −x³/3 (stationary inflection). Gradient 1/(1 + x²) − 1 ≤ 0, so it is decreasing everywhere. For large x, y ≈ π/2 − x (oblique asymptotes).'},
+   {eq:X+' '+ATAN+' '+X,f:x=>x*Math.atan(x),x:[-4,4],lvl:2,wa:'x arctan(x)',idea:'Even and ≥ 0. Near 0, y ≈ x². For large x, tan⁻¹ x ≈ π/2 − 1/x so y ≈ πx/2 − 1; mirrored for x < 0. Two oblique asymptotes.'},
+   {eq:ASIN+'('+SIN+' '+X+')',f:x=>Math.asin(Math.sin(x)),x:[-2*PI,2*PI],y:[-2,2],pi:1,lvl:3,wa:'arcsin(sin x)',idea:'sin⁻¹ only returns values in [−π/2, π/2]. So y = x on [−π/2, π/2], then it folds back: a triangle (zigzag) wave of period 2π with corners at x = π/2 + nπ.'},
+   {eq:ATAN+'('+TAN+' '+X+')',f:x=>Math.atan(Math.tan(x)),x:[-2*PI,2*PI],y:[-2,2],pi:1,lvl:3,wa:'arctan(tan x)',idea:'Sawtooth: y = x on (−π/2, π/2), repeated every π, with jumps at x = π/2 + nπ.'},
+   {eq:ACOS+'('+COS+' '+X+')',f:x=>Math.acos(Math.cos(x)),x:[-2*PI,2*PI],y:[-.5,3.6],pi:1,lvl:3,wa:'arccos(cos x)',idea:'cos⁻¹ returns values in [0, π]. So y = |x| on [−π, π], repeated: a triangle wave between 0 and π, period 2π.'},
+   {eq:SIN+'('+ATAN+' '+X+')',f:x=>Math.sin(Math.atan(x)),x:[-6,6],y:[-1.4,1.4],lvl:2,wa:'sin(arctan x)',idea:'If θ = tan⁻¹ x, draw the triangle: sin θ = x/√(1 + x²). Odd, increasing, y → ±1 as x → ±∞.'},
+  ];
+  return r.pick(L)}},
+/* 13 power towers */
+{w:.6,fn:r=>{
+  const L=[
+   {eq:sup(X,'1/'+X),f:x=>x>0?Math.pow(x,1/x):NaN,x:[-.3,8],y:[-.2,1.8],lvl:2,wa:'x^(1/x)',idea:'Write it as e^((ln x)/x). The exponent is ln x / x, which peaks at x = e, so the max is y = e^(1/e) ≈ 1.4447. As x → 0⁺ the exponent → −∞ so y → 0. As x → ∞, y → 1.'},
+   {eq:sup(par('1 + '+fr(1,X)),X),f:x=>{const b=1+1/x;return b>0?Math.pow(b,x):NaN},x:[-6,6],y:[-.5,6],lvl:3,wa:'(1+1/x)^x',idea:'Defined where 1 + 1/x > 0: x > 0 or x < −1. y → e as x → ±∞. As x → 0⁺, y → 1; as x → −1⁻, y → ∞.'},
+   {eq:sup(X,M+X),f:x=>x>0?Math.pow(x,-x):NaN,x:[-.3,4],y:[-.2,1.8],lvl:2,wa:'x^(-x)',idea:'It is 1/xˣ = e^(−x ln x). y → 1 as x → 0⁺, max at x = 1/e with y = e^(1/e) ≈ 1.4447, then y → 0 very fast.'},
+   {eq:sup(X,LN+' '+X),f:x=>x>0?Math.exp(Math.log(x)**2):NaN,x:[-.2,4],y:[-.3,6],lvl:3,wa:'x^(ln x)',idea:'It is e^((ln x)²) ≥ 1, with min 1 at x = 1. As x → 0⁺, (ln x)² → ∞ so y → ∞: a vertical asymptote at x = 0.'},
+   {eq:sup(X,SIN+' '+X),f:x=>x>0?Math.exp(Math.sin(x)*Math.log(x)):NaN,x:[-.5,4*PI],pi:1,lvl:3,wa:'x^(sin x)',idea:'It is e^(sin x · ln x), always positive. y = 1 wherever sin x = 0 or x = 1. In between it swings above and below 1, more strongly as ln x grows. As x → 0⁺, sin x ln x → 0 so y → 1.'},
+  ];
+  return r.pick(L)}},
+/* 14 nested and engineering shapes */
+{w:.8,fn:r=>{
+  const k=r.pick([1,3]);
+  const L=[
+   {eq:LN+'('+LN+' '+X+')',f:x=>Math.log(Math.log(x)),x:[-.3,10],y:[-4,1.5],lvl:2,wa:'ln(ln x)',idea:'Only x > 1. Vertical asymptote x = 1 (y → −∞). Zero at x = e. Increases very slowly.'},
+   {eq:ex(M+ex(M+X)),f:x=>Math.exp(-Math.exp(-x)),x:[-3,6],y:[-.2,1.3],lvl:3,wa:'exp(-exp(-x))',idea:'Inner e^(−x) goes from ∞ to 0, so y goes from 0 up to e⁰ = 1. Very flat on the left (double exponential), passes through (0, 1/e).'},
+   {eq:LN+'(1 + '+ex(X)+')',f:x=>Math.log1p(Math.exp(x)),x:[-6,6],lvl:2,wa:'ln(1+e^x)',idea:'For x → −∞, y ≈ eˣ → 0. For large x, y ≈ x (oblique asymptote y = x). Passes through (0, ln 2). A smooth version of max(0, x).'},
+   {eq:fr(1,'1 + '+ex(M+(k===1?'':k)+X)),f:x=>1/(1+Math.exp(-k*x)),x:[-6,6],y:[-.3,1.3],lvl:1,wa:`1/(1+exp(-${k}x))`,idea:`An S-curve through (0, 1/2), asymptotes y = 0 and y = 1, gradient ${k}/4 at 0, rotationally symmetric about (0, 1/2).`},
+   {eq:fr(X,'1 + '+ex(M+X)),f:x=>x/(1+Math.exp(-x)),x:[-6,5],lvl:3,wa:'x/(1+exp(-x))',idea:'For large x, y ≈ x. For x → −∞, y ≈ x eˣ → 0 from below, so it dips under the axis with a minimum (near x ≈ −1.28) before returning to 0.'},
+   {eq:SIN+'(π '+SIN+' '+X+')',f:x=>Math.sin(PI*Math.sin(x)),x:[-2*PI,2*PI],y:[-1.4,1.4],pi:1,lvl:3,wa:'sin(pi sin x)',idea:'Inner π sin x runs over [−π, π]. y = 0 where sin x = 0 or ±1; y = ±1 where sin x = ±1/2. Period 2π, with an extra wiggle in each half-wave.'},
+  ];
+  return r.pick(L)}},
+/* 15 random two-piece combinator */
+{w:2.4,fn:r=>{
+  const A=[
+   {h:X,f:x=>x,c:'poly',rk:0,w:[-4,4],d:'x'},
+   {h:sup(X,2),f:x=>x*x,c:'poly',rk:0,w:[-3,3],d:'x^2'},
+   {h:sup(X,3),f:x=>x**3,c:'poly',rk:0,w:[-2.5,2.5],d:'x^3'},
+   {h:rt(X),f:Math.sqrt,c:'root',rk:1,pos:1,w:[0,6],d:'sqrt(x)'},
+   {h:ex(X),f:Math.exp,c:'exp',rk:2,w:[-4,2],d:'exp(x)'},
+   {h:ex(M+X),f:x=>Math.exp(-x),c:'exp',rk:2,w:[-2,4],d:'exp(-x)'},
+   {h:ex(M+sup(X,2)),f:x=>Math.exp(-x*x),c:'exp',rk:2,w:[-3,3],d:'exp(-x^2)'},
+   {h:LN+' '+X,f:Math.log,c:'log',rk:3,pos:1,w:[0,6],d:'ln(x)'},
+   {h:ATAN+' '+X,f:Math.atan,c:'inv',rk:4,w:[-5,5],d:'arctan(x)'},
+   {h:SIN+' '+X,f:Math.sin,c:'trig',rk:5,trig:1,d:'sin(x)'},
+   {h:COS+' '+X,f:Math.cos,c:'trig',rk:5,trig:1,d:'cos(x)'},
+   {h:fr(1,'1 + '+sup(X,2)),f:x=>1/(1+x*x),c:'rat',rk:6,w:[-4,4],d:'1/(1+x^2)',frac:1,den:'1 + '+sup(X,2)},
+  ];
+  let a,b;do{a=r.pick(A);b=r.pick(A)}while(a.c===b.c);
+  const o=r.pick(['×','×','÷','÷','+','−']);
+  let eq,f,wa,lvl=2,idea;
+  if(o==='×'){
+    if(a.rk>b.rk)[a,b]=[b,a];
+    eq=b.frac?fr(a.h,b.den):a.h+' '+b.h;f=x=>a.f(x)*b.f(x);wa=`${a.d}*${b.d}`;
+    idea='Sketch both factors. Zeros of either factor are zeros of y, the sign of y is the product of the signs, and the factor that grows or decays fastest controls the ends. If one factor is bounded (sin, cos, tan⁻¹), use the other as an envelope.';
+  }else if(o==='÷'){
+    if(b.frac){eq=par('1 + '+sup(X,2))+' '+a.h;f=x=>a.f(x)*(1+x*x);wa=`(1+x^2)*${a.d}`}
+    else if(a.frac){eq=fr(1,par('1 + '+sup(X,2))+' '+b.h);f=x=>1/((1+x*x)*b.f(x));wa=`1/((1+x^2)*${b.d})`}
+    else{eq=fr(a.h,b.h);f=x=>a.f(x)/b.f(x);wa=`${a.d}/${b.d}`}
+    lvl=3;idea='Zeros of the bottom give vertical asymptotes, unless the top is also 0 there: then use small-x behaviour to find the limit. Zeros of the top (where the bottom is not 0) are zeros of y. At the ends, compare growth rates.';
+  }else{
+    const s=o==='+'?1:-1;eq=`${a.h} ${o==='+'?'+':M} ${b.h}`;f=x=>a.f(x)+s*b.f(x);wa=`${a.d}${o==='+'?'+':'-'}${b.d}`;
+    idea='Sketch both pieces on the same axes, then add (or subtract) heights. In each region one term usually dominates, so the curve follows it there; the other term only matters where they are similar in size.';
+  }
+  const pos=a.pos||b.pos,trig=a.trig||b.trig;let xr;
+  if(trig)xr=pos?[-.5,4*PI]:[-2*PI,2*PI];
+  else{const ws=[a,b].filter(t=>t.w).map(t=>t.w);xr=[Math.min(...ws.map(w=>w[0])),Math.max(...ws.map(w=>w[1]))];if(pos)xr=[-.5,xr[1]]}
+  return{eq,f,x:xr,pi:!!trig,lvl,wa,idea}}},
+];
+
+function genQ(t,seed){
+  const q=TPL[t].fn(RNG(seed));
+  q.id=`g${t}-${seed}`;q.src='Random combo';q.kind=q.kind||'fn';q.lvl=q.lvl||2;return q;
+}
+function bankQ(id){const b=BANK.find(q=>q.id===id);if(!b)return null;const q=Object.assign({},b);q.kind=q.kind||'fn';return q}
+function buildQ(id){if(typeof CATMAP!=='undefined'&&CATMAP.has(id))return Object.assign({},CATMAP.get(id));if(id[0]==='b')return bankQ(id);if(id[0]==='c'){const q=catBuild(id);if(q){q.id=id;q.src='Combination';q.kind='fn'}return q}const m=/^g(\d+)-(\d+)$/.exec(id);return m?genQ(+m[1],+m[2]):null}
+
+/* ================= numerical analysis ================= */
+function quant(a,p){const i=Math.min(a.length-1,Math.max(0,Math.floor(p*(a.length-1))));return a[i]}
+function sideLimit(f,p,s){
+  const u=1+Math.abs(p),v1=f(p+s*1e-5*u),v2=f(p+s*1e-8*u),v3=f(p+s*1e-11*u);
+  if(v3===Infinity||v3===-Infinity)return{t:'inf',s:Math.sign(v3)};
+  if(v2===Infinity||v2===-Infinity)return{t:'inf',s:Math.sign(v2)};
+  if(isF(v2)&&isF(v3)){
+    if(isF(v1)&&Math.abs(v3-v2)<=.01*Math.abs(v2-v1)+1e-9*(1+Math.abs(v3)))return{t:'lim',v:v3};
+    if(Math.abs(v3-v2)<1e-3*(1+Math.abs(v3))&&isF(v1)&&Math.abs(v2-v1)<5e-2*(1+Math.abs(v2)))return{t:'lim',v:v3};
+    if(isF(v1)&&Math.sign(v1)===Math.sign(v2)&&Math.sign(v2)===Math.sign(v3)&&Math.abs(v3)<Math.abs(v2)&&Math.abs(v2)<Math.abs(v1)&&Math.abs(v3)<.1&&Math.abs(v3)<.8*Math.abs(v2))return{t:'lim',v:0};
+    const g1=Math.abs(v2)-Math.abs(v1),g2=Math.abs(v3)-Math.abs(v2);
+    if(isF(v1)&&g2>.5&&g1>0&&g2>.3*g1&&Math.sign(v3)===Math.sign(v2)&&Math.abs(v3)>3)return{t:'inf',s:Math.sign(v3)};
+    return{t:'osc'};
+  }
+  return{t:'none'};
+}
+function classifyPoint(f,p){
+  const l=sideLimit(f,p,-1),r=sideLimit(f,p,1);
+  if(l.t==='inf'||r.t==='inf')return{type:'asym',x:p,l,r};
+  if(l.t==='osc'||r.t==='osc')return{type:'osc',x:p};
+  if(l.t==='lim'&&r.t==='lim'){
+    if(Math.abs(l.v-r.v)<1e-4*(1+Math.abs(l.v))){const fp=f(p);if(isF(fp)&&Math.abs(fp-l.v)<1e-4*(1+Math.abs(fp)))return null;return{type:'hole',x:p,y:l.v}}
+    return{type:'jump',x:p,l:l.v,r:r.v};
+  }
+  return null;
+}
+function golden(f,a,b,max){const g=(Math.sqrt(5)-1)/2;let c=b-g*(b-a),d=a+g*(b-a),fc=f(c),fd=f(d);
+  for(let k=0;k<90;k++){if(max?fc>fd:fc<fd){b=d;d=c;fd=fc;c=b-g*(b-a);fc=f(c)}else{a=c;c=d;fc=fd;d=a+g*(b-a);fd=f(d)}}return(a+b)/2}
+function symmetry(f,x0,x1){const R=Math.max(Math.abs(x0),Math.abs(x1));let ev=0,od=0,n=0;
+  for(let k=1;k<=11;k++){const x=R*(.0731+.0817*k),a=f(x),b=f(-x);if(!isF(a)||!isF(b))continue;n++;const tol=1e-7*(1+Math.abs(a));if(Math.abs(a-b)<tol)ev++;if(Math.abs(a+b)<tol)od++}
+  if(n<3)return null;if(ev===n&&od===n)return'zero';if(ev===n)return'even';if(od===n)return'odd';return null}
+function endBeh(f,sgn){
+  const g=x=>f(sgn*x),scales=[1e2,1e3,1e4,1e5,1e6],okS=[];
+  for(const S of scales){const v=[];let ok=true;for(let k=0;k<9;k++){const t=g(S+k*.7853981);if(!isF(t)){ok=false;break}v.push(t)}if(ok)okS.push({S,v})}
+  if(!okS.length){for(const S of[1e2,30,10]){const t=g(S);if(t===Infinity||t===-Infinity)return{t:'inf',s:Math.sign(t)}}return null}
+  const last=okS[okS.length-1],v=last.v;let mono=true;const d0=Math.sign(v[1]-v[0]);
+  for(let k=0;k<v.length-1;k++){const d=Math.sign(v[k+1]-v[k]);if(d!==0&&d!==d0)mono=false}
+  const lo=Math.min(...v),hi=Math.max(...v);
+  if(!mono&&hi-lo>1e-3*(1+Math.abs((lo+hi)/2))){
+    if(okS.length>=2){const p=okS[okS.length-2].v,sp=Math.max(...p)-Math.min(...p);if(hi-lo>5*sp)return{t:'oscg'}}
+    else if(hi-lo>1e6)return{t:'oscg'};
+    return{t:'osc'};
+  }
+  const a=g(1e4),b=g(1e5),c=g(1e6),z=g(1e9);
+  if(isF(z)&&isF(c)&&isF(b)&&Math.abs(z-c)<2e-3*(1+Math.abs(z))&&Math.abs(c-b)<2e-2*(1+Math.abs(c)))return{t:'lim',v:z};
+  for(const t of[c,z,b,a])if(t===Infinity||t===-Infinity)return{t:'inf',s:Math.sign(t)};
+  if(isF(a)&&isF(b)&&isF(c)){
+    const m=(c-b)/9e5,m2=(b-a)/9e4;
+    if(Math.abs(m-m2)<1e-3*(1+Math.abs(m))&&Math.abs(m)>1e-4){
+      const C1=c-m*1e6,C2=b-m*1e5;
+      if(Math.abs(C1-C2)<1e-2*(1+Math.abs(C1)))return{t:'obl',m:m*sgn,c:C1};
+      return{t:'grow',s:Math.sign(c),m:m*sgn};
+    }
+    return{t:'inf',s:Math.sign(c)};
+  }
+  const lv=v[v.length-1];return Math.abs(lv)>1e3?{t:'inf',s:Math.sign(lv)}:null;
+}
+function analyze(f0,x0,x1){
+  const f=x=>{try{return f0(x)}catch(e){return NaN}};
+  const N=4000,W=x1-x0,dx=W/N,xs=new Float64Array(N+1),ys=new Float64Array(N+1);
+  const OV=1e300,ovf=new Int8Array(N+1);
+  for(let i=0;i<=N;i++){xs[i]=x0+W*i/N;const v=f(xs[i]);if(v===Infinity||v===-Infinity){ovf[i]=v>0?1:-1;ys[i]=ovf[i]*OV}else ys[i]=isF(v)?v:NaN}
+  const fin=Array.from(ys).filter(v=>isF(v)&&Math.abs(v)<OV).sort((a,b)=>a-b);
+  const scale=fin.length?Math.max(quant(fin,.95)-quant(fin,.05),1e-9):1;
+  const med=fin.length?quant(fin,.5):0;
+  const res={sing:[],zeros:[],tps:[],gaps:[],ends:[],scale};
+  const addSing=s=>{if(!s)return;if(res.sing.some(t=>Math.abs(t.x-s.x)<1e-6*(1+Math.abs(s.x))))return;res.sing.push(s)};
+  const bisFin=(a,b)=>{for(let k=0;k<70;k++){const m=(a+b)/2;if(!Number.isNaN(f(m)))a=m;else b=m}return a};
+  /* NaN runs: holes, gaps, domain edges */
+  for(let i=0;i<=N;){
+    if(Number.isNaN(ys[i])){let j=i;while(j+1<=N&&Number.isNaN(ys[j+1]))j++;
+      const L=i>0?bisFin(xs[i-1],xs[i]):null,R=j<N?bisFin(xs[j+1],xs[j]):null;
+      if(L!==null&&R!==null&&R-L<dx*2.5&&j-i<=1){addSing(classifyPoint(f,(L+R)/2))}
+      else{res.gaps.push([L,R]);
+        if(L!==null){const s=sideLimit(f,L,-1);if(s.t==='inf')addSing({type:'asym',x:L,l:s,r:{t:'none'}});else if(s.t==='lim')res.ends.push({x:L,y:s.v});else if(s.t==='osc')addSing({type:'osc',x:L})}
+        if(R!==null){const s=sideLimit(f,R,1);if(s.t==='inf')addSing({type:'asym',x:R,l:{t:'none'},r:s});else if(s.t==='lim')res.ends.push({x:R,y:s.v});else if(s.t==='osc')addSing({type:'osc',x:R})}
+      }
+      i=j+1}else i++;
+  }
+  /* jumps and poles between samples */
+  const big=4*scale+Math.abs(med);
+  /* overflow runs: the pole sits at the end next to a small (or undefined) value */
+  for(let i=0;i<=N;){if(ovf[i]){let j=i;while(j+1<=N&&ovf[j+1])j++;
+      const ln=i>0?ys[i-1]:NaN,rn=j<N?ys[j+1]:NaN;const useL=i>0&&(Number.isNaN(ln)||!(Math.abs(rn)<Math.abs(ln)));
+      let p;if(useL){if(Number.isNaN(ln))p=xs[i-1];else{let lo=xs[i-1],hi=xs[i];for(let k=0;k<70;k++){const m=(lo+hi)/2;if(isF(f(m)))lo=m;else hi=m}p=(lo+hi)/2}}
+      else if(j<N){if(Number.isNaN(rn))p=xs[j+1];else{let lo=xs[j],hi=xs[j+1];for(let k=0;k<70;k++){const m=(lo+hi)/2;if(isF(f(m)))hi=m;else lo=m}p=(lo+hi)/2}}
+      const bisNaN=(a,b)=>{for(let k=0;k<70;k++){const m=(a+b)/2;if(Number.isNaN(f(m)))a=m;else b=m}return b};
+      if(useL&&Number.isNaN(ln))p=bisNaN(xs[i-1],xs[i]);else if(!useL&&j<N&&Number.isNaN(rn))p=bisNaN(xs[j+1],xs[j]);
+      if(p!==undefined){const l=sideLimit(f,p,-1),r=sideLimit(f,p,1);addSing({type:'asym',x:p,l,r})}
+      i=j+1}else i++}
+  for(let i=1;i<N-1;i++){const a=ys[i],b=ys[i+1];if(!isF(a)||!isF(b)||ovf[i]||ovf[i+1]||ovf[i-1]||ovf[i+2])continue;
+    const cand=Math.abs(b-a)>1.2*scale||(Math.max(Math.abs(a),Math.abs(b))>big&&Math.abs(b-a)>.2*scale);
+    if(!cand)continue;let p;
+    if(Math.sign(a)!==Math.sign(b)||Math.abs(b-a)>1.2*scale&&Math.min(Math.abs(a),Math.abs(b))<big){let lo=xs[i],hi=xs[i+1];
+      for(let k=0;k<70;k++){const m=(lo+hi)/2,v=f(m);if(!isF(v)){hi=m;continue}if(Math.abs(v-a)<Math.abs(v-b))lo=m;else hi=m}p=(lo+hi)/2}
+    else p=golden(x=>Math.abs(f(x))||0,xs[i-1],xs[i+2],true);
+    const k0=Math.floor((p-x0)/dx);let nearOv=false;for(let k=k0-3;k<=k0+3;k++)if(k>=0&&k<=N&&ovf[k])nearOv=true;if(nearOv)continue;
+    const c=classifyPoint(f,p);if(!c||c.type==='hole')continue;
+    if(c.type==='osc'){let bad=false;for(let k=1;k<=12;k++){if(!isF(f(p-k*dx/3))||!isF(f(p+k*dx/3)))bad=true}if(bad)continue}
+    c.weak=true;addSing(c);
+  }
+  /* drop asymptotes that are only the edge of an overflow plateau leading to a real singular point */
+  const isInf=v=>v===Infinity||v===-Infinity;
+  res.sing=res.sing.filter(s=>!(s.weak&&s.type==='asym'&&(s.l.t==='osc'||s.r.t==='osc')));
+  res.sing=res.sing.filter(s=>{if(s.type!=='asym'||!s.weak)return true;
+    for(const dir of[-1,1]){const u=1e-4*(1+Math.abs(s.x));if(!isInf(f(s.x+dir*u)))continue;let d=u;
+      while(d<W){if(!isInf(f(s.x+dir*d)))break;d*=1.5}
+      if(res.sing.some(t=>t!==s&&(t.x-s.x)*dir>0&&Math.abs(t.x-s.x)<=d*1.01))return false}
+    return true});
+  res.sing.sort((a,b)=>a.x-b.x);
+  const nearSing=(x,r)=>res.sing.some(s=>Math.abs(s.x-x)<r);
+  /* zeros */
+  const Z=[];
+  for(let i=0;i<=N;i++){const a=ys[i];
+    if(a===0){if(!(i>0&&ys[i-1]===0)&&!(i<N&&ys[i+1]===0))Z.push({x:xs[i]});continue}
+    if(i<N){const b=ys[i+1];if(isF(a)&&isF(b)&&a*b<0&&!res.sing.some(s=>s.x>=xs[i]-1e-12&&s.x<=xs[i+1]+1e-12)){
+      let lo=xs[i],hi=xs[i+1],fl=a;for(let k=0;k<70;k++){const m=(lo+hi)/2,v=f(m);if(Math.sign(v)===Math.sign(fl)){lo=m;fl=v}else hi=m}
+      const rr=(lo+hi)/2;if(Math.abs(f(rr))<1e-6*(1+scale))Z.push({x:rr})}}
+    if(i>0&&i<N){const p=ys[i-1],b=ys[i+1];if(isF(p)&&isF(a)&&isF(b)&&Math.abs(a)<Math.abs(p)&&Math.abs(a)<=Math.abs(b)&&Math.sign(p)===Math.sign(a)&&Math.sign(a)===Math.sign(b)&&Math.abs(a)<.05*scale){
+      const m=golden(x=>Math.abs(f(x)),xs[i-1],xs[i+1],false);if(Math.abs(f(m))<1e-9*(1+scale))Z.push({x:m,touch:true})}}
+  }
+  Z.sort((a,b)=>a.x-b.x);for(const z of Z.filter(z=>!nearSing(z.x,3*dx))){if(!res.zeros.length||Math.abs(z.x-res.zeros[res.zeros.length-1].x)>1e-5)res.zeros.push(z);else if(z.touch)res.zeros[res.zeros.length-1].touch=true}
+  /* turning points */
+  for(let i=1;i<N;i++){const p=ys[i-1],a=ys[i],b=ys[i+1];if(!isF(p)||!isF(a)||!isF(b))continue;
+    if(Math.abs(a)>20*scale+Math.abs(med)||nearSing(xs[i],3*dx))continue;
+    const tol=1e-12*(1+scale),d1=a-p,d2=b-a;let k=null;
+    if(d1>tol&&d2<-tol)k='max';else if(d1<-tol&&d2>tol)k='min';if(!k)continue;
+    const x=golden(f,xs[i-1],xs[i+1],k==='max');const y=f(x);if(!isF(y))continue;
+    if(!res.tps.length||Math.abs(res.tps[res.tps.length-1].x-x)>1e-5)res.tps.push({x,y,k});
+  }
+  if(x0<=0&&x1>=0){const v=f(0);if(isF(v))res.yint=v}
+  res.sym=symmetry(f,x0,x1);
+  res.endP=endBeh(f,1);res.endN=endBeh(f,-1);
+  return res;
+}
+
+/* ================= number formatting ================= */
+const CONSTS=[[Math.E,'e'],[1/Math.E,'1/e'],[Math.exp(-1/Math.E)*1,'e^(−1/e)'],[Math.SQRT2,'√2'],[1/Math.SQRT2,'1/√2'],[Math.sqrt(3),'√3'],[1/Math.sqrt(3),'1/√3'],[Math.sqrt(Math.E),'√e'],[Math.LN2,'ln 2'],[Math.exp(-1/Math.E),'e^(−1/e)'],[Math.exp(1/Math.E),'e^(1/e)'],[4*Math.exp(-2),'4e⁻²'],[Math.exp(-2),'e⁻²']];
+function gcd(a,b){a=Math.abs(a);b=Math.abs(b);while(b){[a,b]=[b,a%b]}return a}
+function piStr(k,q){const g=gcd(k,q);k/=g;q/=g;const s=k<0?M:'',a=Math.abs(k);const n=(a===1?'':a)+'π';return s+(q===1?n:n+'/'+q)}
+function fmt(v){if(Math.abs(v)<5e-9)v=0;if(Math.abs(v-Math.round(v))<5e-7)return String(Math.round(v)||0).replace('-',M);return v.toFixed(4).replace('-',M)}
+function ratOf(v,maxQ=12,maxP=400){for(let q=1;q<=maxQ;q++){const p=Math.round(v*q);if(Math.abs(v*q-p)<2e-7*q*(1+Math.abs(v))&&Math.abs(p)<=maxP){const g=gcd(p,q)||1;return[p/g,q/g]}}return null}
+const ratS=([p,q])=>q===1?num(p):`${num(p)}/${q}`;
+function exactStr(v){
+  if(!isF(v))return null;if(Math.abs(v)<5e-9)return'0';
+  if(Math.abs(v-Math.round(v))<5e-7)return num(Math.round(v));
+  for(const q of[1,2,3,4,6]){const k=v*q/PI;if(Math.abs(k-Math.round(k))<2e-6&&Math.round(k)!==0&&Math.abs(Math.round(k))<=48)return piStr(Math.round(k),q)}
+  const r=ratOf(v);if(r)return ratS(r);
+  const r2=ratOf(v*v,12,500);if(r2&&r2[0]>0){let[p,q]=r2,n=p*q,a=1;for(let k=2;k*k<=n;k++)while(n%(k*k)===0){n/=k*k;a*=k}
+    if(n>1){const g=gcd(a,q);a/=g;const d=q/g;return`${v<0?M:''}${a===1?'':a}√${n}${d===1?'':'/'+d}`}}
+  for(const[c,l]of CONSTS){if(Math.abs(v-c)<2e-6)return l;if(Math.abs(v+c)<2e-6)return M+l}
+  if(v>0){const lr=ratOf(Math.log(v),6,30);if(lr&&lr[0]!==0)return lr[1]===1&&Math.abs(lr[0])===1?(lr[0]>0?'e':'1/e'):`e^(${ratS(lr)})`}
+  const ev=ratOf(Math.exp(Math.abs(v)),12,60);if(ev&&!(ev[0]===1&&ev[1]===1)){const inner=ev[1]===1?String(ev[0]):`${ev[0]}/${ev[1]}`;return(v<0?M:'')+(ev[1]===1?`ln ${inner}`:`ln(${inner})`)}
+  {const k=Math.round(v/PI),sg=k%2===0?1:-1,w=sg*(v-k*PI);
+   for(const[fnc,nm]of[[Math.sin,'sin'],[Math.tan,'tan']]){const r=ratOf(fnc(w),8,12);if(r&&r[0]!==0&&Math.abs(r[0])!==r[1]){const t=`${nm}⁻¹(${ratS(r)})`;
+     if(k===0)return t;return`${piStr(k,1)} ${sg>0?'+':M} ${t}`}}}
+  for(const[k,E]of[[1,'e'],[2,'e²'],[3,'e³'],[.5,'√e'],[-1,'e'],[-2,'e²'],[-3,'e³'],[-.5,'√e']]){const rr=ratOf(v/Math.exp(k),6,40);if(!rr||rr[0]===0)continue;
+    const[p,q]=rr,sg=p<0?M:'',P=Math.abs(p);if(k>0)return`${sg}${P===1?'':P}${E}${q===1?'':'/'+q}`;return`${sg}${P}/${q===1?E:'('+q+E+')'}`}
+  return null}
+function nice(v){const s=fmt(v);if(Math.abs(v-Math.round(v))<5e-7)return s;const e=exactStr(v);return e?`${e} ≈ ${s}`:s}
+function exOr(v){return exactStr(v)||fmt(v)}
+function pairStr(x,y){const d=`(${fmt(x)}, ${fmt(y)})`,e=`(${exOr(x)}, ${exOr(y)})`;return e===d?d:`${e} ≈ ${d}`}
+/* ================= fixed catalogue: 250 distinct questions per level ================= */
+const AT=[
+ {k:'x',h:X,f:x=>x,c:'poly',rk:0,w:[-4,4],d:'x'},
+ {k:'x2',h:sup(X,2),f:x=>x*x,c:'poly',rk:0,w:[-3,3],d:'x^2'},
+ {k:'x3',h:sup(X,3),f:x=>x**3,c:'poly',rk:0,w:[-2.5,2.5],d:'x^3'},
+ {k:'rx',h:rt(X),f:Math.sqrt,c:'root',rk:1,pos:1,w:[0,6],d:'sqrt(x)',nn:1},
+ {k:'ex',h:ex(X),f:Math.exp,c:'exp',rk:2,w:[-4,2],d:'exp(x)',nn:1},
+ {k:'emx',h:ex(M+X),f:x=>Math.exp(-x),c:'exp',rk:2,w:[-2,4],d:'exp(-x)',nn:1},
+ {k:'g',h:ex(M+sup(X,2)),f:x=>Math.exp(-x*x),c:'exp',rk:2,w:[-3,3],d:'exp(-x^2)',nn:1},
+ {k:'ln',h:LN+' '+X,f:Math.log,c:'log',rk:3,pos:1,w:[0,6],d:'ln(x)',sp:1},
+ {k:'at',h:ATAN+' '+X,f:Math.atan,c:'inv',rk:4,w:[-5,5],d:'arctan(x)',sp:1},
+ {k:'s',h:SIN+' '+X,f:Math.sin,c:'trig',rk:5,trig:1,d:'sin(x)',sp:1},
+ {k:'c',h:COS+' '+X,f:Math.cos,c:'trig',rk:5,trig:1,d:'cos(x)',sp:1},
+ {k:'l',h:fr(1,'1 + '+sup(X,2)),f:x=>1/(1+x*x),c:'rat',rk:6,w:[-4,4],d:'1/(1+x^2)',frac:1,den:'1 + '+sup(X,2),inl:'1/(1 + '+sup(X,2)+')',nn:1},
+ {k:'r',h:fr(1,X),f:x=>1/x,c:'recip',rk:7,w:[-4,4],d:'1/x',frac:1,den:X,inl:'1/'+X},
+];
+const ATK=Object.fromEntries(AT.map(a=>[a.k,a]));
+const wrapD=d=>d.includes('+')?par(d):d;
+function winFor(...as){const pos=as.some(a=>a.pos),trig=as.some(a=>a.trig);
+  if(trig)return{x:pos?[-.5,4*PI]:[-2*PI,2*PI],pi:true};
+  const ws=as.filter(a=>a.w).map(a=>a.w);let x=[Math.min(...ws.map(w=>w[0])),Math.max(...ws.map(w=>w[1]))];if(pos)x=[-.5,x[1]];return{x,pi:false}}
+const coefH=(b,k)=>k===1?b.h:b.frac?fr(k,b.den):`${k}${b.sp?' ':''}${b.h}`;
+const IDEA_SUM='Sketch both pieces on the same axes, then add (or subtract) heights. In each region one term usually dominates, so the curve follows it there; the other term only matters where they are similar in size. Check x = 0 and the ends.';
+const IDEA_PROD='Sketch both factors. Zeros of either factor are zeros of y, the sign of y is the product of the signs, and the factor that grows or decays fastest controls the ends. If one factor is bounded (sin, cos, tan⁻¹), use the other as an envelope.';
+const IDEA_QUOT='Zeros of the bottom give vertical asymptotes, unless the top is also 0 there: then use small-x behaviour to find the limit. Zeros of the top (where the bottom is not 0) are zeros of y. At the ends, compare growth rates.';
+function catBuild(id){
+  const p=id.split('-');const T=p[0];
+  if(T==='cS'){const a=ATK[p[1]],b=ATK[p[2]],o=p[3],k=+p[4],s=o==='p'?1:-1;const w=winFor(a,b);
+    return{eq:`${a.h} ${o==='p'?'+':M} ${coefH(b,k)}`,f:x=>a.f(x)+s*k*b.f(x),x:w.x,pi:w.pi,lvl:1,fam:'sum',wa:`${a.d}${o==='p'?'+':'-'}${k}*${b.d}`,idea:IDEA_SUM}}
+  if(T==='cP'){const a=ATK[p[1]],b=ATK[p[2]];const w=winFor(a,b);let eq;
+    if(a.frac&&b.frac)eq=fr(1,`${wrapD(a.den)}${wrapD(b.den)}`);else if(b.frac)eq=fr(a.h,b.den);else if(a.frac)eq=fr(b.h,a.den);else eq=`${a.h} ${b.h}`;
+    return{eq,f:x=>a.f(x)*b.f(x),x:w.x,pi:w.pi,lvl:2,fam:'prod',wa:`${a.d}*${b.d}`,idea:IDEA_PROD}}
+  if(T==='cQ'){const a=ATK[p[1]],b=ATK[p[2]];const w=winFor(a,b);const eq=a.frac?fr(1,`${wrapD(a.den)} ${b.h}`):fr(a.h,b.h);
+    return{eq,f:x=>a.f(x)/b.f(x),x:w.x,pi:w.pi,lvl:3,fam:'quot',wa:`${a.d}/(${b.d})`,idea:IDEA_QUOT}}
+  if(T==='cC'){const o=OUTS.find(z=>z.k===p[1]),a=ATK[p[2]];const w=winFor(a);
+    return{eq:o.h(a),f:x=>o.f(a.f(x)),x:w.x,pi:w.pi,lvl:o.lvl,fam:'comp-'+o.k,wa:o.d(a.d),idea:o.idea}}
+  if(T==='cH'){const a=ATK[p[1]],o=OUTS.find(z=>z.k===p[2]),b=ATK[p[3]];const w=winFor(a,b);
+    return{eq:a.frac?fr(o.h(b),a.den):`${a.h} ${o.h(b)}`,f:x=>a.f(x)*o.f(b.f(x)),x:w.x,pi:w.pi,lvl:3,fam:'hp-'+o.k,wa:`${a.d}*${o.d(b.d)}`,
+     idea:'Sketch the composite part first: mark where its inside hits the special values and what it does at the ends. Then multiply by the outer factor. Zeros of either factor are zeros of y, and if the composite is bounded the other factor acts as an envelope.'}}
+  if(T==='cT')return transQ(+p[1]);
+  if(T==='cR')return ratQ(+p[1]);
+  if(T==='cY')return polyQ(+p[1]);
+  return null;
+}
+const OUTS=[
+ {k:'sin',lvl:3,h:a=>`${SIN}(${a.inl||a.h})`,f:Math.sin,d:d=>`sin(${d})`,idea:'Sketch the inside u(x) first and mark where u = 0, ±π/2, ±π, … Those x values are zeros and peaks. Where u changes fast the waves bunch up; where u settles to a limit L, y → sin L.'},
+ {k:'cos',lvl:3,h:a=>`${COS}(${a.inl||a.h})`,f:Math.cos,d:d=>`cos(${d})`,idea:'Sketch the inside u(x) first and mark where u = 0, ±π/2, ±π, … Those give y = 1, 0, −1. Where u changes fast the waves bunch up; where u settles to a limit L, y → cos L.'},
+ {k:'exp',lvl:3,h:a=>ex(a.inl||a.h),f:Math.exp,d:d=>`exp(${d})`,idea:expIdea},
+ {k:'ln',lvl:3,h:a=>`${LN}(${a.inl||a.h})`,f:Math.log,d:d=>`ln(${d})`,idea:lnIdea},
+ {k:'at',lvl:3,h:a=>`${ATAN}(${a.inl||a.h})`,f:Math.atan,d:d=>`arctan(${d})`,idea:'tan⁻¹ is increasing and squashes everything into (−π/2, π/2). So y keeps the turning points and zeros of the inside u(x), and where u → ±∞ the curve levels off at ±π/2.'},
+ {k:'sq',lvl:2,h:a=>rt(a.h),f:Math.sqrt,d:d=>`sqrt(${d})`,idea:'Only where the inside u(x) ≥ 0. √ keeps turning points (it is increasing), squashes large values, and where u crosses 0 with non-zero slope the curve meets the axis vertically.'},
+ {k:'rec',lvl:2,h:a=>fr(1,a.h),f:x=>1/x,d:d=>`1/(${d})`,idea:recIdea},
+ {k:'abs',lvl:1,h:a=>ab(a.h),f:Math.abs,d:d=>`abs(${d})`,idea:'Sketch the inside first, then reflect every part below the x-axis upwards. Expect corners where it crosses the axis.'},
+];
+const COMP_BAN={ln:['ex','emx','g'],exp:['ln'],sq:['x2','ex','emx','g'],rec:['l','r','ex','emx'],abs:['x2','rx','ex','emx','g','l']};
+/* easy: transformed basic functions */
+const TF=[
+ {k:'sin',h:t=>`${SIN}(${t})`,f:Math.sin,trig:1,d:'sin'},{k:'cos',h:t=>`${COS}(${t})`,f:Math.cos,trig:1,d:'cos'},
+ {k:'exp',h:t=>ex(t),f:Math.exp,d:'exp'},{k:'ln',h:t=>`${LN}(${t})`,f:Math.log,d:'ln',pos:1},
+ {k:'rec',h:(t,n)=>fr(n,t),f:x=>1/x,w:u=>`1/(${u})`,num:1},{k:'sq',h:t=>rt(t),f:Math.sqrt,d:'sqrt',pos:1},
+ {k:'at',h:t=>`${ATAN}(${t})`,f:Math.atan,d:'arctan'},{k:'lor',h:(t,n)=>fr(n,'1 + ('+t+')<sup>2</sup>'),f:u=>1/(1+u*u),w:u=>`1/(1+(${u})^2)`,num:1},
+];
+function transQ(n){
+  const fi=n%TF.length,m=Math.floor(n/TF.length),F=TF[fi];
+  const A=[0,1,-2,3,-1][m%5],B=[2,-1,3,-2,1][Math.floor(m/5)%5],K=[2,1,.5,3][Math.floor(m/25)%4];
+  let C=[1,-1,2,0][Math.floor(m/100)%4];if(F.trig)C=[PI/2,-PI/3,PI/4,0][Math.floor(m/100)%4];
+  if([A!==0,Math.abs(B)!==1,K!==1,C!==0].filter(Boolean).length<2)return null;
+  const kS=K===1?'':K===.5?'':String(K),cS=F.trig?(C===0?'':C>0?' + '+(C===PI/2?'π/2':'π/4'):' − π/3'):(C===0?'':` ${C>0?'+':M} ${Math.abs(C)}`);
+  const t=`${kS}${X}${K===.5?'/2':''}${cS}`;
+  const head=A===0?'':`${num(A)} `;const bA=Math.abs(B);
+  const body=F.num?F.h(t,bA):(bA===1?'':bA+' ')+F.h(t);
+  const eq=A===0?(B<0?M:'')+body:`${head}${B<0?M:'+'} ${body}`;
+  const sh=-C/K;let x;
+  if(F.trig)x=[-2*PI,2*PI];else if(F.pos)x=[sh-1,sh+8/K];else if(F.k==='exp')x=[sh-4/K,sh+2.5/K];else x=[sh-5,sh+5];
+  return{eq,f:x0=>A+B*F.f(K*x0+C),x,pi:!!F.trig,lvl:1,fam:'trans',wa:(()=>{const cs=C===0?'':C===PI/2?'+pi/2':C===PI/4?'+pi/4':C===-PI/3?'-pi/3':(C>0?'+':'')+C,u=`${K}x${cs}`;return`${A}+${B}*`+(F.w?F.w(u):`${F.d}(${u})`)})(),
+   idea:`Start from y = ${F.k==='lor'?'1/(1 + x²)':F.k==='rec'?'1/x':F.k==='sq'?'√x':F.k==='at'?'tan⁻¹ x':F.k==='exp'?'eˣ':F.k} and transform it. Inside the bracket: the key point moves to where ${K===1?'':K===.5?'x/2':K}${K===1||K===.5?'':'x'}${K===1?'x':''}${cS.replace(/<[^>]+>/g,'')} = 0 and the graph is squashed horizontally by ${K}. Outside: stretch vertically by ${bA}${B<0?' and reflect in the x-axis':''}${A?`, then move up by ${num(A)}`:''}. Track asymptotes, intercepts and the period or range through each step.`}
+}
+/* easy: simple rationals */
+const RAT=[];
+for(const a of[-2,-1,0,1,2])for(const b of[-2,-1,0,1,2])if(a!==b)RAT.push(['ab',a,b]);
+for(const a of[1,2,3,-1,-2])RAT.push(['ax2',a]);
+for(const[a,b]of[[-2,1],[-1,2],[0,2],[-3,1],[1,3],[0,1]])RAT.push(['inv2',a,b]);
+for(const a of[1,4])RAT.push(['xq+',a],['xq-',a]);
+for(const a of[1,2,-1])RAT.push(['sqx',a]);
+function ratQ(n){const r=RAT[n%RAT.length],[t,a,b]=r;
+  if(t==='ab')return{eq:fr(lin(a),lin(b)),f:x=>(x-a)/(x-b),x:[b-5,b+5],lvl:1,fam:'rat',wa:`${lw(a)}/${lw(b)}`,idea:`Vertical asymptote x = ${num(b)}, horizontal asymptote y = 1 (top and bottom both ≈ x). Zero at x = ${num(a)}, y-intercept ${num(+(a/b).toFixed(4))}${b===0?' (none, x = 0 is the asymptote)':''}. Writing y = 1 + ${num(b-a)}/(x − ${num(b)}) shows it is a shifted, stretched 1/x.`};
+  if(t==='ax2')return{eq:fr(lin(a),sup(X,2)),f:x=>(x-a)/(x*x),x:[-4,a>0?3*a+4:5],lvl:1,fam:'rat',wa:`${lw(a)}/x^2`,idea:`Write it as 1/x − ${num(a)}/x². Near 0 the x² term wins, so y → ${a>0?M:'+'}∞ on both sides. Zero at x = ${num(a)}, one turning point at x = ${num(2*a)}, and y → 0 at both ends.`};
+  if(t==='inv2'){const lo=Math.min(a,b),hi=Math.max(a,b);return{eq:fr(1,fac(lo)+fac(hi)),f:x=>1/((x-a)*(x-b)),x:[lo-3,hi+3],lvl:1,fam:'rat',wa:`1/(${lw(lo)}${lw(hi)})`,idea:`Two vertical asymptotes, x = ${num(lo)} and x = ${num(hi)}. The bottom is a ∪-shaped quadratic, negative between them, so y is negative there with a maximum at the midpoint x = ${num((lo+hi)/2)}. Outside, y > 0 and → 0.`}}
+  if(t==='xq+')return{eq:fr(X,sup(X,2)+' + '+a),f:x=>x/(x*x+a),x:[-6,6],lvl:1,fam:'rat',wa:`x/(x^2+${a})`,idea:`Odd, no asymptotes from the bottom (always positive). Like x/${a} near 0 and 1/x far out, so y → 0. Max at x = ${Math.sqrt(a)}, y = 1/${2*Math.sqrt(a)}.`};
+  if(t==='xq-')return{eq:fr(X,sup(X,2)+' − '+a),f:x=>x/(x*x-a),x:[-5,5],lvl:1,fam:'rat',wa:`x/(x^2-${a})`,idea:`Odd. Vertical asymptotes x = ±${Math.sqrt(a)}. Through the origin with negative gradient; the gradient is always negative (no turning points). y → 0 at both ends.`};
+  return{eq:fr(sup(par(lin(a)),2),X),f:x=>(x-a)**2/x,x:[-6,6],lvl:1,fam:'rat',wa:`(x-${a})^2/x`,idea:`Write it as x − ${2*a} + ${a*a}/x: oblique asymptote y = x − ${2*a} and vertical asymptote x = 0. Touches the axis at x = ${num(a)} (double root).`};
+}
+/* easy: factorised polynomials */
+const POLY=[];
+for(const a of[-2,-1,1,2])for(const b of[-2,-1,0,1,2,3])if(a!==b)POLY.push(['sq',a,b]);
+for(const[a,b]of[[1,2],[2,1],[1,3],[2,2]])POLY.push(['q4',a,b]);
+for(const a of[1,2,3])POLY.push(['x2b',a]);
+function polyQ(n){const r=POLY[n%POLY.length],[t,a,b]=r;
+  if(t==='sq')return{eq:sup(par(lin(a)),2)+fac(b),f:x=>(x-a)**2*(x-b),x:[Math.min(a,b)-2,Math.max(a,b)+2],lvl:1,fam:'poly',wa:`${lw(a)}^2*${lw(b)}`,idea:`Cubic with positive x³ term: down on the left, up on the right. Touches the axis at the double root x = ${num(a)} and crosses at x = ${num(b)}. y-intercept ${num(-a*a*b)}.`};
+  if(t==='q4')return{eq:`${sup(X,2)}${fac(a)}${fac(-b)}`,f:x=>x*x*(x-a)*(x+b),x:[-b-1.5,a+1.5],lvl:1,fam:'poly',wa:`x^2*${lw(a)}*${lw(-b)}`,idea:`Quartic with positive x⁴ term, so up at both ends. Touches at x = 0 (double root), crosses at x = ${a} and x = −${b}.`};
+  return{eq:`${X}${sup(par(lin(a)),3)}`,f:x=>x*(x-a)**3,x:[-1.5,a+1.5],lvl:1,fam:'poly',wa:`x*${lw(a)}^3`,idea:`Quartic, up at both ends. Crosses at 0. At x = ${a} there is a triple root: it crosses with a stationary inflection (flat as it passes through).`};
+}
+/* fingerprint so the same function never counts twice */
+const FPX=[-2.713,-1.297,-.371,.413,1.234,2.917,4.71,.0731];
+function fpOf(q){if(q.kind==='fn'||q.kind==='pm'){const f=q.f||q.g;return q.kind+':'+FPX.map(x=>{let v;try{v=f(x)}catch(e){v=NaN}return isF(v)?v.toPrecision(7):'n'}).join(',')}return'id:'+q.id}
+function viable(q){if(q.kind!=='fn'&&q.kind!=='pm')return true;const f=q.f||q.g,[a,b]=q.x;let n=0,lo=Infinity,hi=-Infinity;
+  for(let i=0;i<=240;i++){const v=f(a+(b-a)*i/240);if(isF(v)&&Math.abs(v)<1e8){n++;lo=Math.min(lo,v);hi=Math.max(hi,v)}}return n>60&&hi-lo>1e-6}
+function shuffle(arr,seed){const r=mulberry(seed),a=arr.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+const PER_LEVEL=250,CAT={1:[],2:[],3:[]},CATMAP=new Map();
+(function buildCatalogue(){
+  const seen=new Set(),fams={1:{},2:{},3:{}};
+  const add=(q,fam)=>{q.kind=q.kind||'fn';if(!q.lvl||!viable(q))return;const fp=fpOf(q);if(seen.has(fp))return;seen.add(fp);q.fp=fp;(fams[q.lvl][fam]=fams[q.lvl][fam]||[]).push(q)};
+  BANK.forEach(b=>{const q=bankQ(b.id);add(q,'bank')});
+  for(let t=0;t<TPL.length;t++){if(t===15)continue;for(let s=1;s<=300;s++){const q=genQ(t,s);add(q,'t'+t)}}
+  const mk=(id)=>{const q=catBuild(id);if(q){q.id=id;q.src='Combination';add(q,q.fam)}};
+  for(const a of AT)for(const b of AT){if(a===b||a.c===b.c)continue;
+    if(a.rk<b.rk){mk(`cS-${a.k}-${b.k}-p-1`);mk(`cS-${a.k}-${b.k}-m-1`);mk(`cS-${a.k}-${b.k}-p-2`);mk(`cS-${a.k}-${b.k}-m-2`);mk(`cP-${a.k}-${b.k}`)}
+    if(!b.frac)mk(`cQ-${a.k}-${b.k}`)}
+  for(const o of OUTS)for(const a of AT){if(a.k==='x'||(COMP_BAN[o.k]||[]).includes(a.k))continue;mk(`cC-${o.k}-${a.k}`)}
+  for(const a of['x','x2','emx','r','g'])for(const o of['sin','cos','exp','ln','at'])for(const b of AT){if(b.k==='x'||b.k===a||(COMP_BAN[o]||[]).includes(b.k))continue;mk(`cH-${a}-${o}-${b.k}`)}
+  for(let n=0;n<TF.length*400;n++)mk('cT-'+n);
+  for(let n=0;n<RAT.length;n++)mk('cR-'+n);
+  for(let n=0;n<POLY.length;n++)mk('cY-'+n);
+  for(const L of[1,2,3]){const F=fams[L],keys=Object.keys(F);const lists={};keys.forEach((k,i)=>lists[k]=k==='bank'?F[k]:shuffle(F[k],1000+i*17+L));
+    const order=['bank',...shuffle(keys.filter(k=>k!=='bank'),77+L)];const out=[];
+    while(out.length<PER_LEVEL){let took=false;for(const k of order){const l=lists[k];if(l&&l.length&&out.length<PER_LEVEL){out.push(l.shift());took=true}}if(!took)break}
+    CAT[L]=out;out.forEach(q=>CATMAP.set(q.id,q));}
+})();
+
+if(typeof module!=='undefined')module.exports={BANK,TPL,genQ,analyze,nice,quant,CAT,CATMAP,catBuild,fpOf,buildQ};
+</script>
+
+<script id="ui">
+'use strict';
+(function(){
+const $=s=>document.querySelector(s);
+const sheet=$('#sheet'),cB=$('#cBase'),cI=$('#cInk'),cS=$('#cSol');
+const xB=cB.getContext('2d'),xI=cI.getContext('2d'),xS=cS.getContext('2d');
+const CHECK=['Symmetry','Domain','Intercepts','Asymptotes','x → ±∞','Near 0 / special x','Turning points','Period / sign'];
+const KEY='curveSketchDrill.v1';
+let store={seen:[],hist:{},src:'mix',lvl:'1',units:'int',range:'',bank:[]};
+try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)store=Object.assign(store,s)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(store))}catch(e){}};
+
+const st={hist:[],hi:-1,q:null,base:null,view:null,strokes:[],undo:[],tool:'pen',revealed:false,an:null,count:0,recent:[],review:[],reviewing:false,
+  t0:0,elapsed:0,running:false,hintUsed:false,W:0,H:0,dpr:1};
+
+/* ---------- colours ---------- */
+let COL={};
+function readCols(){const cs=getComputedStyle(document.documentElement);['poi','accent','paper','dot','minor','major','axis','ink','mark','c2','c3','guide','muted'].forEach(k=>COL[k]=cs.getPropertyValue('--'+k).trim())}
+
+/* ---------- picking ---------- */
+function weightedT(){const tot=TPL.reduce((s,t)=>s+t.w,0);let r=Math.random()*tot;for(let i=0;i<TPL.length;i++){r-=TPL[i].w;if(r<=0)return i}return TPL.length-1}
+const fpCache=new Map();
+function fpId(id){if(!fpCache.has(id)){const q=buildQ(id);fpCache.set(id,q?(q.fp||fpOf(q)):id)}return fpCache.get(id)}
+const isInterview=q=>q.src===GS||q.src===IL;
+function poolFor(lvl,src){return CAT[lvl].filter(q=>src==='mix'||(src==='bank'?isInterview(q):!isInterview(q)))}
+function unseen(pool){const seen=new Set((store.seen||[]).map(fpId));return pool.filter(q=>!seen.has(q.fp))}
+function pick(){
+  st.notice='';
+  if(st.reviewing&&st.review.length)return buildQ(st.review.shift());
+  st.reviewing=false;
+  const lvl=+$('#lvl').value,src=$('#src').value,cur=st.q&&st.q.id;
+  if(src==='mine'){const ids=store.bank.filter(id=>id!==cur);const seen=store.seen||[];
+    if(ids.length){ids.sort((a,b)=>{const ia=seen.indexOf(a),ib=seen.indexOf(b);return(ib<0?1e9:ib)-(ia<0?1e9:ia)});const top=ids.slice(0,Math.max(1,Math.ceil(ids.length/3)));const q=buildQ(top[Math.floor(Math.random()*top.length)]);if(q)return q}
+    st.notice='Your saved bank is empty, so this one comes from the main pool.'}
+  const pool=poolFor(lvl,src==='mine'?'mix':src);let fresh=unseen(pool);
+  if(!fresh.length){st.notice=`You have done all ${pool.length} ${LV[lvl]} questions here. Starting a new round, oldest first.`;
+    const seen=store.seen||[],rank=q=>{const i=seen.findIndex(id=>fpId(id)===q.fp);return i<0?1e9:i};
+    fresh=pool.slice().sort((a,b)=>rank(b)-rank(a)).slice(0,Math.max(1,Math.ceil(pool.length/4))).filter(q=>q.id!==cur)}
+  const q=fresh[Math.floor(Math.random()*fresh.length)];return Object.assign({},q)
+}
+function updateLevelLabels(){const src=$('#src').value==='mine'?'mix':$('#src').value;
+  [...$('#lvl').options].forEach(o=>{const L=+o.value,p=poolFor(L,src);o.textContent=`${LV[L]} (${unseen(p).length} of ${p.length} new)`})}
+
+/* ---------- view window ---------- */
+function sampleFns(q){
+  if(q.kind==='fn')return[q.f];
+  if(q.kind==='multi')return q.fs.filter(s=>!s.guide).map(s=>s.f);
+  if(q.kind==='pm')return[x=>{const g=q.g(x);return g>=0?Math.sqrt(g):NaN},x=>{const g=q.g(x);return g>=0?-Math.sqrt(g):NaN}];
+  return[];
+}
+function autoY(q,xr){
+  const fs=sampleFns(q),[a,b]=xr||q.x,vals=[];
+  for(const f of fs)for(let i=0;i<=1500;i++){const v=f(a+(b-a)*i/1500);if(isF(v))vals.push(v)}
+  if(!vals.length)return[-5,5];
+  vals.sort((m,n)=>m-n);let lo=quant(vals,.03),hi=quant(vals,.97);
+  if(hi-lo<1e-9){lo-=1.5;hi+=1.5}
+  const pad=(hi-lo)*.2;lo-=pad;hi+=pad;
+  const sp=hi-lo;if(lo>0)lo=-.12*sp;if(hi<0)hi=.12*sp;
+  if(q.kind==='pm'){const m=Math.max(Math.abs(lo),Math.abs(hi));lo=-m;hi=m}
+  return[lo,hi];
+}
+function makeView(){
+  const q=st.q,W=st.W,H=st.H;let[x0,x1]=st.xr,[y0,y1]=st.base;
+  if(q.equal){const s=Math.min(W/(x1-x0),H/(y1-y0));const cx=(x0+x1)/2,cy=(y0+y1)/2,hw=W/s/2,hh=H/s/2;x0=cx-hw;x1=cx+hw;y0=cy-hh;y1=cy+hh}
+  st.view0={x0,x1,y0,y1};const c=st.cam||{ox:0,oy:0,z:1};
+  const cx=(x0+x1)/2+c.ox,cy=(y0+y1)/2+c.oy,hw=(x1-x0)/2/c.z,hh=(y1-y0)/2/c.z;
+  st.view={x0:cx-hw,x1:cx+hw,y0:cy-hh,y1:cy+hh,W,H};
+}
+function setView(x0,x1,y0,y1){const v=st.view0;st.cam={ox:(x0+x1)/2-(v.x0+v.x1)/2,oy:(y0+y1)/2-(v.y0+v.y1)/2,z:(v.x1-v.x0)/(x1-x0)};makeView()}
+let rafId=0;function req(){if(!rafId)rafId=requestAnimationFrame(()=>{rafId=0;render()})}
+const sx=x=>(x-st.view.x0)/(st.view.x1-st.view.x0)*st.W;
+const sy=y=>st.H-(y-st.view.y0)/(st.view.y1-st.view.y0)*st.H;
+const wx=px=>st.view.x0+px/st.W*(st.view.x1-st.view.x0);
+const wy=py=>st.view.y0+(st.H-py)/st.H*(st.view.y1-st.view.y0);
+
+/* ---------- ticks ---------- */
+function niceStep(span,target){const raw=span/target,p=Math.pow(10,Math.floor(Math.log10(raw))),m=raw/p;return(m<1.5?1:m<3.5?2:m<7.5?5:10)*p}
+function ticks(a,b,mode,target){
+  if(mode==='rad'||mode==='deg'){const span=b-a;let step=PI/2,den=2;
+    for(const[s,d]of[[PI/4,4],[PI/2,2],[PI,1],[2*PI,1]]){if(span/s<=target+2){step=s;den=d;break}step=s;den=d}
+    const out=[];for(let k=Math.ceil(a/step);k*step<=b+1e-9;k++){const v=k*step;const deg=Math.round(v*180/PI);out.push({v,l:v===0?'0':mode==='deg'?num(deg)+'°':(step===2*PI?piStr(2*k,1):piStr(k,den))})}return{list:out,step};}
+  let step=niceStep(b-a,target);if(mode==='int')step=Math.max(1,Math.round(step));const out=[];for(let v=Math.ceil(a/step)*step;v<=b+1e-9;v+=step){const r=Math.abs(v)<step*1e-6?0:+v.toPrecision(10);out.push({v:r,l:String(r).replace('-',M)})}return{list:out,step};
+}
+
+/* ---------- drawing: base ---------- */
+function drawBase(ctx=xB){
+  const v=st.view,W=st.W,H=st.H,q=st.q;
+  ctx.setTransform(st.dpr,0,0,st.dpr,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle=COL.paper;ctx.fillRect(0,0,W,H);
+  if(!(st.axes||(st.revealed&&st.show==='ans'))){const gx=niceStep(v.x1-v.x0,W/28),gy=niceStep(v.y1-v.y0,H/28);ctx.fillStyle=COL.dot;
+    for(let x=Math.ceil(v.x0/gx)*gx;x<=v.x1;x+=gx){const X1=sx(x);for(let y=Math.ceil(v.y0/gy)*gy;y<=v.y1;y+=gy){ctx.fillRect(X1-1,sy(y)-1,2,2)}}return}
+  const tgt=Math.max(4,Math.round(W/90)),tgtY=Math.max(4,Math.round(H/70));
+  const um=unitsEff(),tx=ticks(v.x0,v.x1,um,tgt),ty=ticks(v.y0,v.y1,'num',tgtY);
+  ctx.lineWidth=1;ctx.strokeStyle=COL.minor;ctx.beginPath();
+  const mx=tx.step/(um==='rad'||um==='deg'?2:5),my=ty.step/5;
+  for(let x=Math.ceil(v.x0/mx)*mx;x<=v.x1;x+=mx){const p=Math.round(sx(x))+.5;ctx.moveTo(p,0);ctx.lineTo(p,H)}
+  for(let y=Math.ceil(v.y0/my)*my;y<=v.y1;y+=my){const p=Math.round(sy(y))+.5;ctx.moveTo(0,p);ctx.lineTo(W,p)}
+  ctx.stroke();ctx.strokeStyle=COL.major;ctx.beginPath();
+  tx.list.forEach(t=>{const p=Math.round(sx(t.v))+.5;ctx.moveTo(p,0);ctx.lineTo(p,H)});
+  ty.list.forEach(t=>{const p=Math.round(sy(t.v))+.5;ctx.moveTo(0,p);ctx.lineTo(W,p)});ctx.stroke();
+  const ax=v.y0<=0&&v.y1>=0?Math.round(sy(0))+.5:null,ay=v.x0<=0&&v.x1>=0?Math.round(sx(0))+.5:null;
+  ctx.strokeStyle=COL.axis;ctx.fillStyle=COL.axis;ctx.lineWidth=1.4;ctx.beginPath();
+  if(ax!==null){ctx.moveTo(0,ax);ctx.lineTo(W,ax)}if(ay!==null){ctx.moveTo(ay,0);ctx.lineTo(ay,H)}ctx.stroke();
+  if(ax!==null){ctx.beginPath();ctx.moveTo(W-1,ax);ctx.lineTo(W-9,ax-4);ctx.lineTo(W-9,ax+4);ctx.fill()}
+  if(ay!==null){ctx.beginPath();ctx.moveTo(ay,1);ctx.lineTo(ay-4,9);ctx.lineTo(ay+4,9);ctx.fill()}
+  ctx.font='italic 16px "STIX Two Text", Cambria, serif';
+  if(ax!==null){ctx.textAlign='right';ctx.textBaseline='bottom';ctx.fillText('x',W-6,ax-6)}
+  if(ay!==null){ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText('y',ay+8,4)}
+  const mode='both';
+  ctx.font='11px "IBM Plex Mono", ui-monospace, monospace';ctx.fillStyle=COL.muted;
+  if(mode!=='none'){const yb=ax!==null?Math.min(Math.max(ax+4,4),H-16):H-16;ctx.textAlign='center';ctx.textBaseline='top';
+    tx.list.forEach(t=>{if(t.v===0)return;const p=sx(t.v);if(p<12||p>W-12)return;ctx.fillText(t.l,p,yb)})}
+  if(mode==='both'){const xa=ay!==null?Math.min(Math.max(ay-5,30),W-4):34;ctx.textAlign='right';ctx.textBaseline='middle';
+    ty.list.forEach(t=>{if(t.v===0)return;const p=sy(t.v);if(p<10||p>H-10)return;ctx.fillText(t.l,xa,p)})}
+  if(mode!=='none'&&ax!==null&&ay!==null){ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('0',ay-4,ax+4)}
+}
+
+/* ---------- drawing: ink ---------- */
+function strokePath(ctx,s){if(s.pts.length<1)return;ctx.save();ctx.setLineDash(s.mode==='dash'?[9,7]:[]);ctx.lineWidth=s.mode==='dash'?1.8:2.6;ctx.beginPath();
+  const p0=s.pts[0];ctx.moveTo(sx(p0[0]),sy(p0[1]));if(s.pts.length===1)ctx.lineTo(sx(p0[0])+.1,sy(p0[1]));
+  for(let i=1;i<s.pts.length;i++)ctx.lineTo(sx(s.pts[i][0]),sy(s.pts[i][1]));ctx.stroke();ctx.restore()}
+function drawInk(){const ctx=xI;ctx.setTransform(st.dpr,0,0,st.dpr,0,0);ctx.clearRect(0,0,st.W,st.H);
+  if(st.revealed&&st.show!=='ink')return;ctx.strokeStyle=COL.ink;ctx.lineCap='round';ctx.lineJoin='round';ctx.globalAlpha=1;
+  st.strokes.forEach(s=>strokePath(ctx,s));ctx.globalAlpha=1;
+  if(st.userAxes){const X1=sx(st.userAxes.x),Y1=sy(st.userAxes.y);ctx.save();ctx.strokeStyle=COL.accent||'#E8832A';ctx.lineWidth=2;ctx.beginPath();ctx.arc(X1,Y1,7,0,TAU);ctx.stroke();
+    ctx.fillStyle=COL.accent||'#E8832A';ctx.font='italic 14px "STIX Two Text", Cambria, serif';ctx.textAlign='right';ctx.textBaseline='top';ctx.fillText('O',X1-8,Y1+6);ctx.restore()}}
+/* ---------- hand-drawn axes detection ---------- */
+function strokeLine(s){if(s.mode!=='pen'||s.pts.length<4)return null;const P=s.pts.map(p=>[sx(p[0]),sy(p[1])]);
+  let mx=0,my=0;P.forEach(p=>{mx+=p[0];my+=p[1]});mx/=P.length;my/=P.length;let a=0,b=0,c=0;
+  P.forEach(p=>{const dx=p[0]-mx,dy=p[1]-my;a+=dx*dx;b+=dy*dy;c+=dx*dy});
+  const th=.5*Math.atan2(2*c,a-b),ux=Math.cos(th),uy=Math.sin(th);let lo=Infinity,hi=-Infinity,dev=0;
+  P.forEach(p=>{const t=(p[0]-mx)*ux+(p[1]-my)*uy,n=-(p[0]-mx)*uy+(p[1]-my)*ux;lo=Math.min(lo,t);hi=Math.max(hi,t);dev+=n*n});
+  const len=hi-lo,rms=Math.sqrt(dev/P.length);if(len<60||rms>Math.max(4,len*.035))return null;
+  const ang=Math.abs(th)*180/PI,kind=ang<12?'h':ang>78?'v':null;if(!kind)return null;
+  return{kind,len,a:[mx+ux*lo,my+uy*lo],b:[mx+ux*hi,my+uy*hi]}}
+function detectAxes(){if(!st.W)return null;const L=st.strokes.map(strokeLine).filter(Boolean);
+  const H=L.filter(l=>l.kind==='h'&&l.len>=.3*st.W).sort((p,q)=>q.len-p.len),V=L.filter(l=>l.kind==='v'&&l.len>=.3*st.H).sort((p,q)=>q.len-p.len);
+  for(const h of H)for(const v of V){const[x1,y1]=h.a,[x2,y2]=h.b,[x3,y3]=v.a,[x4,y4]=v.b,d=(x1-x2)*(y3-y4)-(y1-y2)*(x3-x4);if(Math.abs(d)<1e-9)continue;
+    const t=((x1-x3)*(y3-y4)-(y1-y3)*(x3-x4))/d,u=((x1-x3)*(y1-y2)-(y1-y3)*(x1-x2))/d,tol=15;
+    const ix=x1+t*(x2-x1),iy=y1+t*(y2-y1);if(t*h.len<-tol||(t-1)*h.len>tol||u*v.len<-tol||(u-1)*v.len>tol)continue;
+    return{x:wx(ix),y:wy(iy)}}
+  return null}
+function refreshAxes(){st.userAxes=detectAxes();const t=$('#axesTag');
+  t.hidden=!st.userAxes;t.textContent=st.revealed&&st.aligned?'Answer lined up with your axes':'Your axes found · origin marked O';drawInk()}
+function alignToUser(){const A=st.userAxes;if(!A||st.axes)return;const ux=A.x,uy=A.y;if(Math.abs(ux)<1e-12&&Math.abs(uy)<1e-12){st.aligned=true;return}
+  const all=new Set(st.strokes);st.undo.forEach(u=>u.forEach(k=>all.add(k)));all.forEach(k=>k.pts.forEach(p=>{p[0]-=ux;p[1]-=uy}));
+  const v=st.view;setView(v.x0-ux,v.x1-ux,v.y0-uy,v.y1-uy);st.userAxes={x:0,y:0};st.aligned=true}
+
+/* ---------- drawing: solution ---------- */
+function plotFn(ctx,f,breaks){
+  const v=st.view,N=Math.max(2400,Math.round(st.W*4)),H=st.H;let pen=false,px=null,psy=null;ctx.beginPath();
+  for(let i=0;i<=N;i++){const x=v.x0+(v.x1-v.x0)*i/N;let y;try{y=f(x)}catch(e){y=NaN}
+    if(!isF(y)){pen=false;px=x;continue}
+    let yy=sy(y);const clamp=Math.min(Math.max(yy,-3*H),4*H);
+    if(pen&&breaks.some(b=>b>px&&b<=x))pen=false;
+    if(pen&&Math.abs(clamp-psy)>2*H&&(clamp<0||clamp>H)&&(psy<0||psy>H)&&Math.sign(clamp-H/2)!==Math.sign(psy-H/2))pen=false;
+    if(!pen){ctx.moveTo(sx(x),clamp);pen=true}else ctx.lineTo(sx(x),clamp);px=x;psy=clamp}
+  ctx.stroke();
+}
+function plotParam(ctx,q){const[t0,t1]=q.t,N=8000;let pen=false,lx=0,ly=0;ctx.beginPath();const lim=Math.max(st.W,st.H)*.25;
+  for(let i=0;i<=N;i++){const t=t0+(t1-t0)*i/N,x=q.px(t),y=q.py(t);if(!isF(x)||!isF(y)){pen=false;continue}const X1=sx(x),Y1=sy(y);
+    if(pen&&Math.hypot(X1-lx,Y1-ly)>lim)pen=false;if(!pen){ctx.moveTo(X1,Y1);pen=true}else ctx.lineTo(X1,Y1);lx=X1;ly=Y1}ctx.stroke()}
+function plotImplicit(ctx,F){const v=st.view,W=st.W,H=st.H,nx=Math.ceil(W/2.5),ny=Math.ceil(H/2.5),vals=new Float64Array((nx+1)*(ny+1));
+  for(let j=0;j<=ny;j++)for(let i=0;i<=nx;i++){const x=v.x0+(v.x1-v.x0)*i/nx,y=v.y1-(v.y1-v.y0)*j/ny;vals[j*(nx+1)+i]=F(x,y)}
+  ctx.beginPath();
+  for(let j=0;j<ny;j++)for(let i=0;i<nx;i++){const a=vals[j*(nx+1)+i],b=vals[j*(nx+1)+i+1],c=vals[(j+1)*(nx+1)+i+1],d=vals[(j+1)*(nx+1)+i];
+    if(!isF(a)||!isF(b)||!isF(c)||!isF(d))continue;const X0=i*W/nx,X1=(i+1)*W/nx,Y0=j*H/ny,Y1=(j+1)*H/ny,P=[];
+    if((a>0)!==(b>0))P.push([X0+(X1-X0)*a/(a-b),Y0]);if((b>0)!==(c>0))P.push([X1,Y0+(Y1-Y0)*b/(b-c)]);
+    if((c>0)!==(d>0))P.push([X1-(X1-X0)*c/(c-d),Y1]);if((d>0)!==(a>0))P.push([X0,Y1-(Y1-Y0)*d/(d-a)]);
+    if(P.length>=2){ctx.moveTo(P[0][0],P[0][1]);ctx.lineTo(P[1][0],P[1][1])}if(P.length===4){ctx.moveTo(P[2][0],P[2][1]);ctx.lineTo(P[3][0],P[3][1])}}
+  ctx.stroke()}
+function dot(ctx,x,y,open,col){const X1=sx(x),Y1=sy(y);if(X1<-5||X1>st.W+5||Y1<-5||Y1>st.H+5)return;ctx.beginPath();ctx.arc(X1,Y1,open?4.5:3.6,0,TAU);
+  if(open){ctx.fillStyle=COL.paper;ctx.fill();ctx.lineWidth=1.8;ctx.strokeStyle=col;ctx.stroke()}else{ctx.fillStyle=col;ctx.fill()}}
+function dashLine(ctx,x1,y1,x2,y2,col){ctx.save();ctx.setLineDash([7,6]);ctx.lineWidth=1.3;ctx.strokeStyle=col;ctx.globalAlpha=.8;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();ctx.restore()}
+function drawSol(ctx=xS,legEl=$('#legend'),force=false,clear=true){
+  ctx.setTransform(st.dpr,0,0,st.dpr,0,0);if(clear)ctx.clearRect(0,0,st.W,st.H);
+  legEl.hidden=true;
+  if(!force&&(!st.revealed||st.show!=='ans'))return;
+  const q=st.q,an=st.an,v=st.view;ctx.lineCap='round';ctx.lineJoin='round';
+  if(an){
+    an.sing.filter(s=>s.type==='asym').forEach(s=>{const X1=sx(s.x);dashLine(ctx,X1,0,X1,st.H,COL.mark)});
+    const hz=[];[an.endP,an.endN].forEach(e=>{if(!e)return;if(e.t==='lim'&&!hz.some(h=>Math.abs(h-e.v)<1e-6)){hz.push(e.v);const Y1=sy(e.v);if(Y1>0&&Y1<st.H)dashLine(ctx,0,Y1,st.W,Y1,COL.mark)}
+      if(e.t==='obl')dashLine(ctx,0,sy(e.m*v.x0+e.c),st.W,sy(e.m*v.x1+e.c),COL.mark)});
+  }
+  if(q.guideCircle){ctx.save();ctx.setLineDash([4,5]);ctx.strokeStyle=COL.guide;ctx.lineWidth=1;ctx.beginPath();ctx.arc(sx(0),sy(0),sx(1)-sx(0),0,TAU);ctx.stroke();ctx.restore()}
+  ctx.lineWidth=2.6;ctx.strokeStyle=COL.mark;
+  if(q.kind==='fn'){plotFn(ctx,q.f,an.sing.map(s=>s.x))}
+  else if(q.kind==='pm'){const br=an.sing.map(s=>s.x),zs=an.zeros.map(z=>z.x);
+    [1,-1].forEach(sg=>{const f=x=>{let g=q.g(x);if(zs.some(z=>Math.abs(z-x)<(v.x1-v.x0)/3000))g=Math.max(g,0);return g>=0?sg*Math.sqrt(g):NaN};plotFn(ctx,f,br);
+      zs.forEach(z=>{const g=x=>q.g(x);const d=(v.x1-v.x0)/2400;[z-d,z+d].forEach(xx=>{const gv=g(xx);if(gv>0){ctx.beginPath();ctx.moveTo(sx(z),sy(0));ctx.lineTo(sx(xx),sy(sg*Math.sqrt(gv)));ctx.stroke()}})})})}
+  else if(q.kind==='multi'){const cols=[COL.mark,COL.c2,COL.c3];let ci=0;const leg=[];
+    q.fs.forEach(s=>{if(s.guide){ctx.save();ctx.setLineDash([5,6]);ctx.lineWidth=1.2;ctx.strokeStyle=COL.guide;plotFn(ctx,s.f,[]);ctx.restore();leg.push([COL.guide,s.l]);return}
+      const c=cols[ci++%3];ctx.strokeStyle=c;ctx.lineWidth=2.6;const br=[];if(s.l==='1/x'||s.l==='1/x²')br.push(0);plotFn(ctx,s.f,br);leg.push([c,s.l])});
+    const L=legEl;L.innerHTML=leg.map(([c,l])=>`<span><b style="background:${c}"></b>${l}</span>`).join('');L.hidden=false}
+  else if(q.kind==='param')plotParam(ctx,q);
+  else if(q.kind==='implicit')plotImplicit(ctx,q.F);
+  (st.pois||[]).forEach(P=>dot(ctx,P.x,P.y,!!P.open,COL.poi||'#8A8A8A'));
+  (q.marks||[]).forEach(m=>dot(ctx,m.x,m.y,m.open,COL.mark));
+}
+function render(){drawBase();drawInk();drawSol();drawHover()}
+/* ---------- Desmos-style points of interest, hover and pinned labels ---------- */
+const xH=$('#cHov').getContext('2d');
+function computePOIs(){const q=st.q,v=st.view,P=[];const add=(x,y,open)=>{if(isF(x)&&isF(y)&&!P.some(o=>Math.abs(o.x-x)<1e-6&&Math.abs(o.y-y)<1e-6))P.push({x,y,open})};
+  if(q.kind==='fn'&&st.an){const an=st.an;an.zeros.slice(0,120).forEach(z=>add(z.x,0));an.tps.slice(0,120).forEach(t=>add(t.x,t.y));if(an.yint!==undefined)add(0,an.yint);
+    an.sing.forEach(z=>{if(z.type==='hole')add(z.x,z.y,1);if(z.type==='jump'){add(z.x,z.l,1);add(z.x,z.r,1)}});an.ends.forEach(e=>add(e.x,e.y))}
+  else if(q.kind==='pm'&&st.an){st.an.zeros.forEach(z=>add(z.x,0));const a2=analyze(x=>{const g=q.g(x);return g>=0?Math.sqrt(g):NaN},v.x0,v.x1);a2.tps.forEach(t=>{add(t.x,t.y);add(t.x,-t.y)});
+    if(v.x0<=0&&v.x1>=0){const g0=q.g(0);if(g0>=0){add(0,Math.sqrt(g0));add(0,-Math.sqrt(g0))}}}
+  else if(q.kind==='multi'){const all=q.fs.map(z=>z.f),main=q.fs.filter(z=>!z.guide).map(z=>z.f);
+    main.forEach(f=>{const a=analyze(f,v.x0,v.x1);a.zeros.forEach(z=>add(z.x,0));a.tps.forEach(t=>add(t.x,t.y));if(a.yint!==undefined)add(0,a.yint)});
+    for(let i=0;i<all.length;i++)for(let j=i+1;j<all.length;j++){const fi=all[i],fj=all[j],a=analyze(x=>fi(x)-fj(x),v.x0,v.x1);a.zeros.forEach(z=>add(z.x,fi(z.x)))}}
+  st.pois=P}
+function curveFns(){const q=st.q;if(q.kind==='fn')return[q.f];if(q.kind==='multi')return q.fs.filter(z=>!z.guide).map(z=>z.f);
+  if(q.kind==='pm')return[x=>{const g=q.g(x);return g>=0?Math.sqrt(g):NaN},x=>{const g=q.g(x);return g>=0?-Math.sqrt(g):NaN}];return[]}
+function traceAt(p,r=16){let best=null;
+  if(st.q.kind==='param'&&st.paramPts){for(const[x,y]of st.paramPts){const d=Math.hypot(sx(x)-p[0],sy(y)-p[1]);if(d<r&&(!best||d<best.d))best={x,y,d}}return best}
+  for(const f of curveFns())for(let k=-r;k<=r;k++){const x=wx(p[0]+k);let y;try{y=f(x)}catch(e){y=NaN}if(!isF(y))continue;const d=Math.hypot(k,sy(y)-p[1]);if(d<r&&(!best||d<best.d))best={x,y,d}}
+  return best}
+function poiAt(p,r=13){let best=null;(st.pois||[]).forEach(P=>{const d=Math.hypot(sx(P.x)-p[0],sy(P.y)-p[1]);if(d<r&&(!best||d<best.d))best={...P,d}});return best}
+const pinKey=P=>P.x.toPrecision(12)+','+P.y.toPrecision(12);
+function label(ctx,P,strong,exact){const X1=sx(P.x),Y1=sy(P.y);if(X1<-20||X1>st.W+20||Y1<-20||Y1>st.H+20)return;
+  ctx.beginPath();ctx.arc(X1,Y1,strong?5:4,0,TAU);ctx.fillStyle=strong?COL.mark:(COL.poi||'#8A8A8A');ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='#fff';ctx.stroke();
+  const t=exact?`(${exOr(P.x)}, ${exOr(P.y)})`:`(${fmt(P.x)}, ${fmt(P.y)})`;ctx.font='12px "IBM Plex Mono", ui-monospace, monospace';const w=ctx.measureText(t).width+14,h=22;
+  let bx=X1+10,by=Y1-h-8;if(bx+w>st.W-4)bx=X1-w-10;if(by<4)by=Y1+10;
+  ctx.fillStyle='#FFFFFF';ctx.strokeStyle='#CFC6BE';ctx.lineWidth=1;ctx.beginPath();if(ctx.roundRect)ctx.roundRect(bx,by,w,h,5);else ctx.rect(bx,by,w,h);ctx.fill();ctx.stroke();
+  ctx.fillStyle='#111';ctx.textAlign='left';ctx.textBaseline='middle';ctx.fillText(t,bx+7,by+h/2+.5)}
+function drawHover(){const ctx=xH;ctx.setTransform(st.dpr,0,0,st.dpr,0,0);ctx.clearRect(0,0,st.W,st.H);
+  if(!st.revealed||st.show!=='ans')return;
+  (st.pois||[]).forEach(P=>{if(st.pins.has(pinKey(P)))label(ctx,P,false,true)});
+  if(st.tap)label(ctx,st.tap,true);
+  if(st.hover&&!(st.hover.poi&&st.pins.has(pinKey(st.hover))))label(ctx,st.hover,!st.hover.poi,!!st.hover.poi)}
+function hoverMove(e){if(!st.revealed||st.show!=='ans'||e.pointerType==='touch')return;const p=pt(e),P=poiAt(p);st.hover=P?{x:P.x,y:P.y,poi:1}:traceAt(p);drawHover()}
+function traceShow(p){const P=poiAt(p);st.hover=P?{x:P.x,y:P.y,poi:1}:traceAt(p,24);drawHover()}
+function handleTap(p){if(!st.revealed||st.show!=='ans')return false;const P=poiAt(p,15);
+  if(P){const k=pinKey(P);if(st.pins.has(k))st.pins.delete(k);else st.pins.add(k);drawHover();return true}
+  const T=traceAt(p,18);if(T){st.tap=T;drawHover();return true}
+  if(st.tap){st.tap=null;drawHover()}return false}
+/* ---------- hold still to straighten (GoodNotes draw-and-hold) ---------- */
+let holdT=null,holdP=null,tapStart=null;
+function snapAxis(a,b){const dx=sx(b[0])-sx(a[0]),dy=sy(b[1])-sy(a[1]),ang=Math.abs(Math.atan2(dy,dx))*180/PI;
+  if(ang<4||ang>176)return[b[0],a[1]];if(Math.abs(ang-90)<4)return[a[0],b[1]];return b}
+function armHold(p){holdP=p;clearTimeout(holdT);holdT=setTimeout(snapStraight,520)}
+function snapStraight(){if(!cur||cur.erase||cur.straight)return;const a=cur.pts[0],b=cur.pts[cur.pts.length-1];
+  if(Math.hypot(sx(a[0])-sx(b[0]),sy(a[1])-sy(b[1]))<25)return;cur.pts=[a,snapAxis(a,b)];cur.straight=true;drawInk();
+  const t=$('#axesTag');const was=t.hidden,txt=t.textContent;t.hidden=false;t.textContent='Straightened. Keep holding to adjust the end';setTimeout(()=>{if(t.textContent.startsWith('Straightened')){t.textContent=txt;t.hidden=was}},1300)}
+function tinyStroke(c){const a=c.pts[0];return c.pts.every(q=>Math.hypot(sx(q[0])-sx(a[0]),sy(q[1])-sy(a[1]))<5)}
+
+/* ---------- sizing ---------- */
+function resize(){
+  const w=sheet.clientWidth;if(!w)return;const h=Math.round(Math.min(Math.max(w*.7,320),window.innerHeight*.78,760));
+  sheet.style.height=h+'px';st.W=w;st.H=h;st.dpr=window.devicePixelRatio||1;
+  [cB,cI,cS,$('#cHov')].forEach(c=>{c.width=Math.round(w*st.dpr);c.height=Math.round(h*st.dpr)});
+  if(st.q){makeView();render()}
+}
+
+/* ---------- input ---------- */
+let cur=null;
+function pt(e){const r=sheet.getBoundingClientRect();return[e.clientX-r.left,e.clientY-r.top]}
+function snapshot(){st.undo.push(st.strokes.slice());if(st.undo.length>200)st.undo.shift()}
+function eraseAt(p){const before=st.strokes.length;st.strokes=st.strokes.filter(s=>!s.pts.some(q=>Math.hypot(sx(q[0])-p[0],sy(q[1])-p[1])<14));if(st.strokes.length!==before)drawInk()}
+const ptrs=new Map();let gest=null,spaceDown=false;
+const TOUCHDEV=(navigator.maxTouchPoints||0)>0;
+const pencilOnly=()=>store.stylus!==false;
+function navPointer(e){return(e.pointerType==='touch'&&(pencilOnly()||st.tool==='move'))||e.button===1||e.button===2||st.tool==='move'||spaceDown}
+function beginGesture(){const P=[...ptrs.values()];sheet.classList.toggle('panning',P.length>0);
+  if(!P.length){gest=null;return}const v=Object.assign({},st.view);
+  if(P.length===1)gest={m:'pan',p0:P[0],v0:v};
+  else{const a=P[0],b=P[1];gest={m:'pinch',mid0:[(a[0]+b[0])/2,(a[1]+b[1])/2],d0:Math.hypot(a[0]-b[0],a[1]-b[1])||1,v0:v}}}
+function updateGesture(){if(!gest)return;const P=[...ptrs.values()],v=gest.v0,W=st.W,H=st.H,vw=v.x1-v.x0,vh=v.y1-v.y0;
+  if(gest.m==='pan'){const dx=(P[0][0]-gest.p0[0])*vw/W,dy=(P[0][1]-gest.p0[1])*vh/H;setView(v.x0-dx,v.x1-dx,v.y0+dy,v.y1+dy)}
+  else if(P.length>=2){const a=P[0],b=P[1],mid=[(a[0]+b[0])/2,(a[1]+b[1])/2],k=Math.min(Math.max((Math.hypot(a[0]-b[0],a[1]-b[1])||1)/gest.d0,.02),50);
+    const wx0=v.x0+gest.mid0[0]/W*vw,wy0=v.y0+(H-gest.mid0[1])/H*vh,nw=vw/k,nh=vh/k,x0=wx0-mid[0]/W*nw,y0=wy0-(H-mid[1])/H*nh;setView(x0,x0+nw,y0,y0+nh)}
+  req()}
+function zoomAt(px,py,k){const v=st.view,vw=v.x1-v.x0,vh=v.y1-v.y0,wx0=v.x0+px/st.W*vw,wy0=v.y0+(st.H-py)/st.H*vh,nw=vw/k,nh=vh/k,x0=wx0-px/st.W*nw,y0=wy0-(st.H-py)/st.H*nh;setView(x0,x0+nw,y0,y0+nh);req()}
+function panBy(dx,dy){const v=st.view,ux=dx*(v.x1-v.x0)/st.W,uy=dy*(v.y1-v.y0)/st.H;setView(v.x0+ux,v.x1+ux,v.y0-uy,v.y1-uy);req()}
+sheet.addEventListener('pointerdown',e=>{if(e.target.closest&&e.target.closest('.view-switch'))return;e.preventDefault();const p=pt(e);
+  if(e.pointerType==='touch'&&(e.width>40||e.height>40))return;          /* palm */
+  if(cur&&e.pointerType!=='pen')return;                                    /* already writing */
+  if(e.pointerType==='pen'){ptrs.clear();gest=null;sheet.classList.remove('panning')}
+  else if(navPointer(e)||ptrs.size>0){sheet.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,p);tapStart=ptrs.size===1&&e.pointerType==='touch'?{id:e.pointerId,p,t:performance.now()}:null;beginGesture();return}
+  if(e.button>0)return;
+  if(st.revealed&&st.show==='ans'){sheet.setPointerCapture(e.pointerId);cur={trace:true,pid:e.pointerId,p0:p,moved:false};traceShow(p);return}
+  sheet.setPointerCapture(e.pointerId);snapshot();
+  if(st.tool==='erase'){cur={erase:true,pid:e.pointerId};eraseAt(p);return}
+  cur={mode:st.tool==='dash'?'dash':'pen',pts:[[wx(p[0]),wy(p[1])]],pid:e.pointerId};st.strokes.push(cur);drawInk();armHold(p)});
+sheet.addEventListener('pointermove',e=>{
+  if(ptrs.has(e.pointerId)){const p=pt(e);ptrs.set(e.pointerId,p);if(tapStart&&tapStart.id===e.pointerId&&Math.hypot(p[0]-tapStart.p[0],p[1]-tapStart.p[1])>6)tapStart=null;updateGesture();return}
+  if(!cur){hoverMove(e);return}if(cur.pid!==e.pointerId)return;
+  if(cur.trace){const p=pt(e);if(Math.hypot(p[0]-cur.p0[0],p[1]-cur.p0[1])>6)cur.moved=true;traceShow(p);return}const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+  if(cur.erase){evs.forEach(ev=>eraseAt(pt(ev)));return}
+  {const lp=pt(evs[evs.length-1]);if(cur.straight){cur.pts[1]=snapAxis(cur.pts[0],[wx(lp[0]),wy(lp[1])]);drawInk();return}
+   if(!holdP||Math.hypot(lp[0]-holdP[0],lp[1]-holdP[1])>5)armHold(lp)}
+  const ctx=xI;ctx.save();ctx.setTransform(st.dpr,0,0,st.dpr,0,0);ctx.strokeStyle=COL.ink;ctx.lineCap='round';ctx.lineJoin='round';ctx.setLineDash(cur.mode==='dash'?[9,7]:[]);ctx.lineWidth=cur.mode==='dash'?1.8:2.6;
+  if(cur.mode==='dash'){evs.forEach(ev=>{const p=pt(ev);cur.pts.push([wx(p[0]),wy(p[1])])});ctx.restore();drawInk();return}
+  ctx.beginPath();const l=cur.pts[cur.pts.length-1];ctx.moveTo(sx(l[0]),sy(l[1]));
+  evs.forEach(ev=>{const p=pt(ev);cur.pts.push([wx(p[0]),wy(p[1])]);ctx.lineTo(p[0],p[1])});ctx.stroke();ctx.restore()});
+const end=e=>{if(ptrs.has(e.pointerId)){if(tapStart&&tapStart.id===e.pointerId&&performance.now()-tapStart.t<350&&e.type==='pointerup')handleTap(tapStart.p);tapStart=null;ptrs.delete(e.pointerId);beginGesture();return}
+  if(!cur||cur.pid!==e.pointerId)return;clearTimeout(holdT);holdP=null;
+  if(cur.trace){if(!cur.moved)handleTap(cur.p0);if(e.pointerType!=='mouse'){st.hover=null;drawHover()}cur=null;return}
+  if(cur.erase&&st.undo.length&&st.undo[st.undo.length-1].length===st.strokes.length)st.undo.pop();cur=null;refreshAxes()};
+sheet.addEventListener('pointerup',end);sheet.addEventListener('pointercancel',end);
+sheet.addEventListener('contextmenu',e=>e.preventDefault());
+sheet.addEventListener('pointerleave',e=>{if(st.hover){st.hover=null;drawHover()}});
+sheet.addEventListener('wheel',e=>{e.preventDefault();const p=pt(e);
+  if(e.ctrlKey)zoomAt(p[0],p[1],Math.exp(-e.deltaY*.01));else panBy(e.deltaX*(e.deltaMode===1?16:1),e.deltaY*(e.deltaMode===1?16:1))},{passive:false});
+['gesturestart','gesturechange'].forEach(t=>sheet.addEventListener(t,e=>e.preventDefault()));
+document.addEventListener('keydown',e=>{if(e.key===' '&&!/INPUT|SELECT|TEXTAREA|BUTTON/.test(e.target.tagName)){if(!spaceDown){spaceDown=true;sheet.classList.add('pan')}e.preventDefault()}});
+document.addEventListener('keyup',e=>{if(e.key===' '){spaceDown=false;sheet.classList.toggle('pan',st.tool==='move')}});
+function recentre(){st.cam={ox:0,oy:0,z:1};makeView();render()}
+$('#centreBtn').onclick=recentre;
+const sb=$('#stylusBtn');sb.hidden=!TOUCHDEV;sb.setAttribute('aria-pressed',String(pencilOnly()));
+sb.onclick=()=>{store.stylus=!pencilOnly();save();sb.setAttribute('aria-pressed',String(pencilOnly()))};
+
+function setTool(t){st.tool=t;[['pen','#tPen'],['dash','#tDash'],['erase','#tErase'],['move','#tMove']].forEach(([k,s])=>$(s).setAttribute('aria-pressed',String(k===t)));sheet.classList.toggle('erase',t==='erase');sheet.classList.toggle('pan',t==='move')}
+$('#tPen').onclick=()=>setTool('pen');$('#tDash').onclick=()=>setTool('dash');$('#tErase').onclick=()=>setTool('erase');$('#tMove').onclick=()=>setTool('move');
+function undo(){if(!st.undo.length)return;st.strokes=st.undo.pop();refreshAxes()}
+$('#undoBtn').onclick=undo;
+function clearInk(){if(!st.strokes.length)return;snapshot();st.strokes=[];refreshAxes()}
+$('#clearBtn').onclick=clearInk;
+function unitsEff(){return st.unitOverride||$('#unitSel').value||'int'}
+function xRange(q){const r=$('#rangeSel').value,u=unitsEff();
+  if(r&&(u==='rad'||u==='deg')&&!q.equal&&q.kind!=='param'&&q.kind!=='implicit'){const[a,b]=r.split(',').map(Number),A=a*PI,B=b*PI,pad=(B-A)*.04;return[A-pad,B+pad]}return q.x}
+function setWindow(){const q=st.q;st.xr=xRange(q);st.base=q.y||autoY(q,st.xr)}
+const RANGES=[['',null],['0,2',[0,2]],['-1,1',[-1,1]],['-2,2',[-2,2]],['0,4',[0,4]],['-4,4',[-4,4]]];
+function updateRangeUI(){const u=unitsEff(),show=u==='rad'||u==='deg',sel=$('#rangeSel'),cur=sel.value||store.range||'';
+  $('#rangeWrap').hidden=!show;
+  const lab=k=>u==='deg'?num(k*180)+'°':(k===0?'0':piStr(k,1));
+  sel.innerHTML=RANGES.map(([v,r])=>`<option value="${v}">${r?lab(r[0])+' to '+lab(r[1]):'Question default'}</option>`).join('');sel.value=cur}
+function applyAxes(){store.units=$('#unitSel').value;store.range=$('#rangeSel').value;save();updateRangeUI();if(!st.q)return;
+  setWindow();makeView();
+  if(st.revealed){const q=st.q;if(q.kind==='fn')st.an=analyze(q.f,st.view.x0,st.view.x1);else if(q.kind==='pm')st.an=analyze(q.g,st.view.x0,st.view.x1);computePOIs();features();renderDesmos($('#dsPractice'),q)}
+  render()}
+function toggleAxes(){st.axes=!st.axes;$('#axesBtn').setAttribute('aria-pressed',String(st.axes));updateAxisCtl();drawBase()}
+$('#unitSel').onchange=applyAxes;$('#rangeSel').onchange=applyAxes;$('#axesBtn').onclick=toggleAxes;
+function setShow(v){st.show=v;updateAxisCtl();$('#vInk').setAttribute('aria-pressed',String(v==='ink'));$('#vAns').setAttribute('aria-pressed',String(v==='ans'));$('#viewSwitch').hidden=!st.revealed;st.hover=null;render()}
+$('#vInk').onclick=()=>setShow('ink');$('#vAns').onclick=()=>setShow('ans');
+
+/* ---------- question flow ---------- */
+const LV={1:'Easy',2:'Medium',3:'Hard'};
+function showQ(q){
+  st.q=q;st.pois=[];st.pins=new Set();st.tap=null;st.hover=null;st.paramPts=null;st.cam={ox:0,oy:0,z:1};st.userAxes=null;st.aligned=false;$('#axesTag').hidden=true;st.axes=false;$('#axesBtn').setAttribute('aria-pressed','false');updateRangeUI();setWindow();st.strokes=[];st.undo=[];st.revealed=false;st.an=null;st.hintUsed=false;
+  const lhs=q.lhs||YV;
+  $('#qEq').innerHTML=q.disp||`${lhs} = ${q.eq}`;
+  $('#qAsk').textContent=q.kind==='multi'?'Sketch on the same axes':'Sketch';
+  const n=$('#qNote');n.hidden=!q.note;n.textContent=q.note||'';
+  const L=$('#qLevel');L.textContent=LV[q.lvl];L.className='pill lvl'+q.lvl;
+  $('#qSrc').textContent=q.src;$('#qReview').hidden=!st.reviewing&&!q._review;$('#qNum').textContent='#'+(st.hi+1);
+  $('#hint').hidden=true;$('#answer').hidden=true;st.show='ink';$('#viewSwitch').hidden=true;
+  $('#revealBtn').textContent='Reveal answer';$('#hintBtn').disabled=false;
+  $('#chips').innerHTML=CHECK.map((c,i)=>`<button type="button" aria-pressed="false" id="chk${i}">${c}</button>`).join('');
+  $('#chips').querySelectorAll('button').forEach(b=>b.onclick=()=>b.setAttribute('aria-pressed',b.getAttribute('aria-pressed')==='true'?'false':'true'));
+  store.seen=[q.id].concat((store.seen||[]).filter(x=>x!==q.id)).slice(0,1000);save();
+  updateAxisCtl();makeView();render();renderStats();updateSaveBtn();
+}
+function stash(){const e=st.hist[st.hi];if(e){e.strokes=st.strokes;e.revealed=st.revealed;e.cam=st.cam;e.aligned=st.aligned}}
+function go(i){stash();st.hi=i;const e=st.hist[i];showQ(e.q);if(e.strokes){st.strokes=e.strokes}if(e.cam){st.cam=e.cam;makeView()}st.aligned=!!e.aligned;refreshAxes();if(e.revealed)reveal();else render();$('#prevBtn').disabled=st.hi<=0}
+function pushQ(q){stash();st.hist.length=st.hi+1;st.hist.push({q});go(st.hist.length-1)}
+function next(){if(st.hi<st.hist.length-1){go(st.hi+1);return}const wasRev=st.reviewing&&st.review.length>0;const q=pick();if(wasRev)q._review=true;pushQ(q)}
+function prev(){if(st.hi>0)go(st.hi-1)}
+function fresh(){stash();st.hist.length=st.hi+1;next()}
+function isSaved(id){return store.bank.includes(id)}
+function toggleSave(){flipSave(st.q.id);updateSaveBtn()}
+function updateSaveBtn(){const b=$('#saveBtn'),on=isSaved(st.q.id);b.setAttribute('aria-pressed',String(on));b.textContent=on?'★ Saved':'☆ Save'}
+let page='practice',bankTab='seen',bankLvl=0,pvId=null,pvW=0;
+const xP=$('#cPv').getContext('2d');
+function showPage(pg){page=pg;$('#viewPractice').hidden=pg!=='practice';$('#viewBank').hidden=pg==='practice';$('.filters').hidden=pg!=='practice';$('#savedTabs').hidden=pg!=='saved';$('#pgSaved').setAttribute('aria-selected',String(pg==='saved'));
+  $('#pgPractice').setAttribute('aria-selected',String(pg==='practice'));$('#pgBank').setAttribute('aria-selected',String(pg==='bank'));
+  if(pg!=='practice'){renderBank();pvW=0;renderPreview()}else{resize();updateSaveBtn()}}
+$('#pgPractice').onclick=()=>showPage('practice');$('#pgBank').onclick=()=>showPage('bank');$('#pgSaved').onclick=()=>showPage('saved');
+const ALLIDS=()=>[1,2,3].flatMap(L=>CAT[L].map(q=>q.id));
+function bankIds(){if(page==='bank')return ALLIDS();return bankTab==='seen'?(store.seen||[]):store.bank.slice().reverse()}
+function renderBank(){
+  $('#seenCount').textContent=`(${(store.seen||[]).length})`;$('#bankCount').textContent=`(${store.bank.length})`;
+  $('#tabSeen').setAttribute('aria-selected',String(bankTab==='seen'));$('#tabMine').setAttribute('aria-selected',String(bankTab==='mine'));
+  $('#bankFilter').innerHTML=[[0,'All'],[1,'Easy'],[2,'Medium'],[3,'Hard']].map(([v,l])=>`<button data-lv="${v}" aria-pressed="${bankLvl===v}">${l}</button>`).join('');
+  const qs=bankIds().map(id=>buildQ(id)).filter(q=>q&&(!bankLvl||q.lvl===bankLvl));
+  $('#bankTitle').textContent=page==='bank'?`All questions: ${qs.length}${bankLvl?' '+LV[bankLvl]:''} of ${ALLIDS().length}`:`${bankTab==='seen'?'Questions that came up':'Questions you starred'}: ${qs.length}`;
+  const e=$('#bankEmpty');e.hidden=qs.length>0;e.textContent=page==='bank'?'No questions.':bankTab==='seen'?(bankLvl?'No questions at this level have come up yet.':'Questions appear here once they come up in Practice.'):(bankLvl?'No saved questions at this level.':'Press ☆ Save on a question to keep it here. Pick “My saved bank only” in Practice to drill just these.');
+  if(!qs.some(q=>q.id===pvId))pvId=qs.length?qs[0].id:null;
+  $('#bankList').innerHTML=qs.map(q=>{const eq=q.disp||`${q.lhs||YV} = ${q.eq}`,sv=isSaved(q.id);
+    return`<li><button class="bq${q.id===pvId?' cur':''}" data-id="${q.id}" title="Show the answer graph"><span>${eq}</span><small>${LV[q.lvl]}</small></button><button class="sv" data-sv="${q.id}" aria-pressed="${sv}" aria-label="${sv?'Remove from':'Add to'} my saved" title="${sv?'Remove from':'Add to'} my saved">${sv?'★':'☆'}</button></li>`}).join('');
+}
+function renderPreview(){
+  const q=pvId&&buildQ(pvId);$('#pvBody').hidden=!q;$('#pvEmpty').hidden=!!q;if(!q)return;
+  $('#pvEq').innerHTML=q.disp||`${q.lhs||YV} = ${q.eq}`;const n=$('#pvNote');n.hidden=!q.note;n.textContent=q.note||'';
+  const L=$('#pvLevel');L.textContent=LV[q.lvl];L.className='pill lvl'+q.lvl;$('#pvSrc').textContent=q.src;
+  const on=isSaved(q.id),b=$('#pvSave');b.setAttribute('aria-pressed',String(on));b.textContent=on?'★ Saved':'☆ Save';
+  const sh=$('#pvSheet'),w=sh.clientWidth;if(!w)return;pvW=w;const h=Math.round(Math.min(Math.max(w*.6,260),560));sh.style.height=h+'px';
+  const c=$('#cPv'),dpr=window.devicePixelRatio||1;c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);
+  const keys=['q','pois','view','view0','cam','W','H','dpr','xr','base','an','revealed','axes','unitOverride'],sv={};keys.forEach(k=>sv[k]=st[k]);st.cam={ox:0,oy:0,z:1};
+  try{st.q=q;st.W=w;st.H=h;st.dpr=dpr;st.unitOverride=q.pi?'rad':'int';st.xr=q.x;st.base=q.y||autoY(q,q.x);makeView();
+    st.an=q.kind==='fn'?analyze(q.f,st.view.x0,st.view.x1):q.kind==='pm'?analyze(q.g,st.view.x0,st.view.x1):null;st.revealed=true;st.axes=true;computePOIs();
+    drawBase(xP);drawSol(xP,$('#pvLegend'),true,false);
+    $('#pvFeat').innerHTML=featuresHTML();$('#pvIdea').innerHTML='<b>Key idea</b>'+q.idea;renderDesmos($('#dsPreview'),q);
+  }finally{keys.forEach(k=>st[k]=sv[k])}
+}
+$('#tabSeen').onclick=()=>{bankTab='seen';renderBank();renderPreview()};$('#tabMine').onclick=()=>{bankTab='mine';renderBank();renderPreview()};
+$('#bankFilter').onclick=e=>{const t=e.target.closest('[data-lv]');if(!t)return;bankLvl=+t.dataset.lv;renderBank();renderPreview()};
+function flipSave(id){if(isSaved(id))store.bank=store.bank.filter(x=>x!==id);else store.bank.push(id);save()}
+$('#bankList').onclick=e=>{const sv=e.target.closest('[data-sv]');if(sv){flipSave(sv.dataset.sv);renderBank();renderPreview();return}
+  const b=e.target.closest('[data-id]');if(!b)return;pvId=b.dataset.id;renderBank();renderPreview()};
+$('#pvSave').onclick=()=>{if(!pvId)return;flipSave(pvId);renderBank();renderPreview()};
+$('#pvPractise').onclick=()=>{const q=pvId&&buildQ(pvId);if(!q)return;showPage('practice');pushQ(q)};
+new ResizeObserver(()=>{if(page!=='practice'&&$('#pvSheet').clientWidth!==pvW)renderPreview()}).observe($('#pvSheet'));
+$('#saveBtn').onclick=toggleSave;$('#prevBtn').onclick=prev;
+function hint(){if(st.revealed)return;const h=$('#hint');h.innerHTML='<b>Key idea</b>'+st.q.idea;h.hidden=false;st.hintUsed=true;$('#hintBtn').disabled=true}
+
+const DESMOS={b4:['y^2=(x-1)/x^2 {x>=0}'],b5:['y=tan(x) {0<=x<=pi/2}','y=arctan(x) {0<=x<=pi/2}','y=x'],b11:['y=x^x {x>0}'],
+  b14:['(y^2-2)^2+(x^2-2)^2=2'],b23:['y=1/x','y=1/x^2','y=1/(1+x^2)'],b24:['y=x^3','y=x^5'],b25:['y=e^x','y=ln(x)','y=x'],b26:['y=sin(x)','y=sin(2x)','y=sin(3x)'],
+  b27:['y=(x-round(x))^2'],b28:['y=(1/x-round(1/x))^2'],b29:['(cos(e^t/(1+e^t)),sin(e^t/(1+e^t)))'],b30:['(sin(t),sin(2t))'],b31:['x^y=y^x {x>0} {y>0}'],b32:['x^(2/3)+y^(2/3)=1'],
+  b21:['y=2(1-e^(-x^2))'],b43:['y=2^x','y=x^2'],b44:['y^2=x^2(x+1)'],b45:['(cos(t),sin(3t))'],b47:['y=x-floor(x)']};
+function cleanExpr(w){return w.replace(/\*1\//g,'/').replace(/^0\+/,'').replace(/\+-/g,'-').replace(/(^|[^\w^.])1\*/g,'$1').replace(/(^|[^\w^.])1x/g,'$1x').replace(/\+0\)/g,')').replace(/e\^\(/g,'e^(')}
+function desmosExprs(q){if(DESMOS[q.id])return DESMOS[q.id];if(q.kind==='pm')return['y^2='+cleanExpr(q.wa)];if(q.kind==='fn'&&q.wa)return['y='+cleanExpr(q.wa)];return[]}
+const escH=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+function copyText(t,btn,code){const done=()=>{if(btn){const o=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=o,1400)}};
+  const sel=()=>{if(!code)return;const r=document.createRange();r.selectNodeContents(code);const s=getSelection();s.removeAllRanges();s.addRange(r)};
+  try{navigator.clipboard.writeText(t).then(done,sel)}catch(e){sel()}}
+function renderDesmos(el,q){const ex=desmosExprs(q);if(!ex.length){el.innerHTML='';return}
+  const pr=q.kind==='param'?` Then set the parameter range to ${q.t[0]===0?'0':num(+q.t[0].toFixed(2))} ≤ t ≤ ${q.t[1]===TAU?'2π':num(+q.t[1].toFixed(2))}.`:'';
+  el.innerHTML=ex.map((e,i)=>`<div class="ds-row"><code>${escH(e)}</code><button data-copy="${i}">Copy</button></div>`).join('')+
+    `<a class="ds-open" href="https://www.desmos.com/calculator" target="_blank" rel="noopener">Open in Desmos ↗</a><p class="ds-note">The button copies ${ex.length>1?'all the equations':'the equation'}. Paste into the first line in Desmos.${ex.length>1?' Use Copy on each line if it pastes as one.':''}${pr}</p>`;
+  el.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyText(ex[+b.dataset.copy],b,b.previousElementSibling));
+  el.querySelector('.ds-open').addEventListener('click',()=>copyText(ex.join('\n')))}
+function waURL(q){let s;const r2=v=>+v.toFixed(2);
+  if(q.waFull)s=q.waFull;else if(q.kind==='pm')s=`plot y^2 = ${q.wa} from x=${r2(q.x[0])} to ${r2(q.x[1])}`;else s=`plot y = ${q.wa} from x=${r2(st.view.x0)} to ${r2(st.view.x1)}`;
+  return'https://www.wolframalpha.com/input?i='+encodeURIComponent(s)}
+
+function sideTxt(s){if(!s||s.t==='none')return null;if(s.t==='inf')return s.s>0?'+∞':M+'∞';if(s.t==='lim')return nice(s.v);return'no limit'}
+function endTxt(e){if(!e)return null;switch(e.t){
+  case'lim':return'y → '+nice(e.v)+' (horizontal asymptote)';case'inf':return'y → '+(e.s>0?'+∞':M+'∞');
+  case'obl':return`y ≈ ${fmt(e.m)}x ${e.c<0?M:'+'} ${fmt(Math.abs(e.c))} (oblique asymptote)`;
+  case'grow':return`y → ${e.s>0?'+∞':M+'∞'}, roughly like y = ${fmt(e.m)}x`;
+  case'osc':return'keeps oscillating, no limit';case'oscg':return'oscillates with growing size';}return null}
+function listPts(arr,f,cap=8){if(!arr.length)return'none in view';if(arr.length>12){const s=arr.slice().sort((a,b)=>Math.abs(a.x)-Math.abs(b.x)).slice(0,4).sort((a,b)=>a.x-b.x);return`${arr.length} in view (crowding), e.g. ${s.map(f).join('; ')}`}
+  return arr.slice(0,cap).map(f).join('<br>')+(arr.length>cap?`<br>+${arr.length-cap} more`:'')}
+function featuresHTML(){
+  const q=st.q,an=st.an,rows=[];
+  if(q.kind==='fn'&&an){
+    const sym={even:'Even (mirror in the y-axis)',odd:'Odd (rotational symmetry about O)',zero:'Both even and odd'}[an.sym];if(sym)rows.push(['Symmetry',sym]);
+    if(an.gaps.length)rows.push(['No curve for',an.gaps.slice(0,5).map(([l,r])=>l===null?`x < ${fmt(r)}`:r===null?`x > ${fmt(l)}`:`${fmt(l)} < x < ${fmt(r)}`).join('<br>')+' (in view)']);
+    if(an.yint!==undefined)rows.push(['y-intercept',`(0, ${nice(an.yint)})`]);
+    rows.push(['Zeros',listPts(an.zeros,z=>'x = '+nice(z.x)+(z.touch?' (touches)':''))]);
+    rows.push(['Turning points',listPts(an.tps,t=>`${t.k} at ${pairStr(t.x,t.y)}`,6)]);
+    const va=an.sing.filter(s=>s.type==='asym');
+    if(va.length)rows.push(['Vertical asymptotes',listPts(va,s=>{const l=sideTxt(s.l),r=sideTxt(s.r);return`x = ${nice(s.x)}`+(l||r?`: ${l?'left → '+l:''}${l&&r?', ':''}${r?'right → '+r:''}`:'')},6)]);
+    const ho=an.sing.filter(s=>s.type==='hole');if(ho.length)rows.push(['Hole (limit exists)',ho.map(s=>`(${nice(s.x)}, ${nice(s.y)})`).join('<br>')]);
+    const ju=an.sing.filter(s=>s.type==='jump');if(ju.length)rows.push(['Jumps',listPts(ju,s=>`x = ${nice(s.x)}: ${nice(s.l)} to ${nice(s.r)}`,5)]);
+    const os=an.sing.filter(s=>s.type==='osc');if(os.length)rows.push(['Wild oscillation',os.map(s=>`near x = ${nice(s.x)} (no limit)`).join('<br>')]);
+    if(an.ends.length)rows.push(['Curve ends at',an.ends.map(e=>`(${nice(e.x)}, ${nice(e.y)})`).join('<br>')]);
+    const p=endTxt(an.endP),n=endTxt(an.endN);if(p)rows.push(['As x → +∞',p]);if(n)rows.push(['As x → −∞',n]);
+  }else if(q.kind==='pm'&&an){
+    rows.push(['Symmetry','About the x-axis (y → −y)']);
+    rows.push(['Meets x-axis',an.zeros.length?an.zeros.map(z=>'x = '+nice(z.x)+(z.touch?' (double root of g)':'')).join('<br>'):'nowhere in view']);
+    const va=an.sing.filter(s=>s.type==='asym');if(va.length)rows.push(['Vertical asymptotes',va.map(s=>'x = '+nice(s.x)).join('<br>')]);
+    const p=endTxt(an.endP),n=endTxt(an.endN);if(p)rows.push(['g(x) as x → +∞',p]);if(n)rows.push(['g(x) as x → −∞',n]);
+  }else rows.push(['Type',{multi:'Several curves, same axes',param:'Parametric curve',implicit:'Implicit curve'}[q.kind]]);
+  return rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
+}
+function features(){$('#feat').innerHTML=featuresHTML();$('#idea').innerHTML='<b>Key idea</b>'+st.q.idea}
+function reveal(){
+  if(st.revealed)return;alignToUser();st.revealed=true;const q=st.q;st.pins=new Set();st.tap=null;st.hover=null;
+  if(q.kind==='fn')st.an=analyze(q.f,st.view.x0,st.view.x1);
+  else if(q.kind==='pm')st.an=analyze(q.g,st.view.x0,st.view.x1);
+  computePOIs();if(q.kind==='param'){st.paramPts=[];for(let i=0;i<=3000;i++){const t=q.t[0]+(q.t[1]-q.t[0])*i/3000,x=q.px(t),y=q.py(t);if(isF(x)&&isF(y))st.paramPts.push([x,y])}}
+  features();renderDesmos($('#dsPractice'),q);$('#answer').hidden=false;$('#hint').hidden=true;$('#revealBtn').textContent='Hide answer';st.show='ans';$('#vInk').setAttribute('aria-pressed','false');$('#vAns').setAttribute('aria-pressed','true');$('#viewSwitch').hidden=false;$('#hintBtn').disabled=true;
+  updateAxisCtl();render();refreshAxes();
+}
+function unreveal(){if(!st.revealed)return;st.revealed=false;st.show='ink';$('#viewSwitch').hidden=true;st.an=null;st.pois=[];st.pins=new Set();st.tap=null;st.hover=null;$('#answer').hidden=true;$('#revealBtn').textContent='Reveal answer';$('#hintBtn').disabled=st.hintUsed;updateAxisCtl();render();refreshAxes()}
+function toggleReveal(){if(st.revealed)unreveal();else reveal()}
+function updateAxisCtl(){$('#axisCtl').hidden=!(st.axes||(st.revealed&&st.show==='ans'))}
+function rate(r){const id=st.q.id,h=store.hist[id]||{n:0};h.n++;h.r=r;h.t=Date.now();if(st.hintUsed)h.h=1;store.hist[id]=h;save();next()}
+function weak(){return Object.entries(store.hist).filter(([,h])=>h.r==='missed'||h.r==='partial').sort((a,b)=>a[1].t-b[1].t).map(([id])=>id)}
+function renderStats(){const H=Object.values(store.hist),c={nailed:0,partial:0,missed:0};H.forEach(h=>c[h.r]=(c[h.r]||0)+1);
+  updateLevelLabels();
+  $('#stats').textContent=(st.notice?st.notice+' ':'')+(H.length?`Rated on this device: ${H.length} · nailed ${c.nailed} · partly ${c.partial} · missed ${c.missed}`:'Rate each sketch after revealing to build a review list.');
+  const w=weak().filter(id=>id!==(st.q&&st.q.id));const b=$('#reviewBtn');b.hidden=!w.length||st.reviewing;b.textContent=`Review weak ones (${w.length})`}
+$('#reviewBtn').onclick=()=>{st.review=weak().filter(id=>id!==st.q.id);if(!st.review.length)return;st.reviewing=true;fresh()};
+$('#hintBtn').onclick=hint;$('#revealBtn').onclick=toggleReveal;$('#nextBtn').onclick=next;
+$('#rate').querySelectorAll('button').forEach(b=>b.onclick=()=>rate(b.dataset.r));
+$('#src').value=store.src;$('#lvl').value=store.lvl;$('#unitSel').value=(store.units&&store.units!=='auto')?store.units:'int';updateRangeUI();$('#rangeSel').value=store.range||'';
+$('#src').onchange=e=>{store.src=e.target.value;save();st.reviewing=false;fresh()};
+$('#lvl').onchange=e=>{store.lvl=e.target.value;save();st.reviewing=false;fresh()};
+const MAC=/Mac|iPhone|iPad|iPod/.test(navigator.platform||navigator.userAgent),MK=MAC?'⌘':'Ctrl+';
+const KEYS={z:[undo,'undo'],p:[()=>setTool('pen'),'pen'],d:[()=>setTool('dash'),'asymptote'],e:[()=>setTool('erase'),'erase'],k:[clearInk,'clear'],
+  u:[()=>{if(st.revealed)setShow(st.show==='ans'?'ink':'ans')},'sketch / answer'],g:[toggleAxes,'axes'],m:[()=>setTool('move'),'move'],'0':[recentre,'re-centre'],h:[hint,'key idea'],r:[toggleReveal,'reveal / hide'],b:[()=>showPage(page==='practice'?'bank':'practice'),'bank'],j:[()=>showPage(page==='saved'?'practice':'saved'),'my saved'],s:[toggleSave,'save to bank'],n:[next,'next'],']':[next,null],arrowright:[next,null],'[':[prev,'previous'],arrowleft:[prev,null]};
+const kb=k=>`<kbd>${MK}${k}</kbd>`;
+$('#shortcuts').innerHTML=(TOUCHDEV?'On iPad: Apple Pencil draws; one finger drags the sheet, two fingers pinch to zoom. ':'')+'Move around with two-finger scroll or Space + drag; pinch or Ctrl + scroll to zoom.<br>Shortcuts: '+
+  [['U','sketch / answer'],['G','axes'],['M','move'],['0','re-centre'],['Z','undo'],['P','pen'],['D','asymptote'],['E','erase'],['K','clear'],['H','key idea'],['R','reveal / hide'],['B','question bank'],['J','my saved'],['S','save'],['N','next'],['[','previous']].map(([k,l])=>`${kb(k)} ${l}`).join(', ')+
+  `. If the browser takes ${MK}N or ${MK}R, use ${kb(']')} for next and the buttons.`;
+[['#axesBtn','G'],['#tMove','M'],['#centreBtn','0'],['#tPen','P'],['#tDash','D'],['#tErase','E'],['#undoBtn','Z'],['#clearBtn','K'],['#hintBtn','H'],['#revealBtn','R'],['#saveBtn','S'],['#nextBtn','N'],['#prevBtn','[']].forEach(([s,k])=>{const el=$(s);el.title=(el.title?el.title.replace(/ \(.*\)$/,''):el.textContent.trim())+` (${MK}${k})`});
+document.addEventListener('keydown',e=>{const tg=e.target.tagName;if(tg==='SELECT'||tg==='INPUT'||tg==='TEXTAREA')return;
+  const mod=MAC?e.metaKey:e.ctrlKey;if(!mod||e.altKey||e.shiftKey)return;
+  const kk=e.key.toLowerCase();if(page!=='practice'&&kk!=='b'&&kk!=='j')return;const a=KEYS[kk];if(!a)return;e.preventDefault();e.stopPropagation();a[0]()},true);
+
+/* theme changes */
+const recolor=()=>{readCols();if(st.q)render();if(page!=='practice')renderPreview()};
+try{matchMedia('(prefers-color-scheme: dark)').addEventListener('change',recolor)}catch(e){}
+new MutationObserver(recolor).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme','class']});
+new ResizeObserver(()=>resize()).observe(sheet);
+readCols();resize();next();$('#prevBtn').disabled=true;
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>{if(st.q)render()});
+})();
+</script>
+
+</body>
+</html>
