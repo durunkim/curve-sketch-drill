@@ -142,6 +142,8 @@ dl.feat dd{margin:0;font-family:var(--f-mono);font-size:.82rem;font-variant-nume
 .view-switch{position:absolute;top:10px;left:10px;display:inline-flex;border:1px solid var(--btn-bd);border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);z-index:2}
 .view-switch button{border:none;border-radius:0;padding:.45rem .9rem;font-weight:700;font-size:.88rem}
 .view-switch button+button{border-left:1px solid var(--btn-bd)}
+.int{display:inline-flex;align-items:center;font-size:1.3em;margin-right:.1em}
+.int .lim{display:inline-flex;flex-direction:column;justify-content:space-between;font-size:.48em;line-height:1.05;margin-left:.08em;align-self:stretch}
 .bank-empty{margin:0;color:var(--muted);font-size:.86rem}
 .stats{color:var(--muted);font-size:.82rem;font-variant-numeric:tabular-nums}
 @media (max-width:520px){.actions{grid-template-columns:1fr}}
@@ -160,6 +162,7 @@ dl.feat dd{margin:0;font-family:var(--f-mono);font-size:.82rem;font-variant-nume
           <option value="mix">Mix: interview bank + combinations</option>
           <option value="gen">Combinations only</option>
           <option value="bank">Interview bank only</option>
+          <option value="om">Oxbridge Mentors set</option>
           <option value="mine">My saved bank only</option>
         </select>
       </label>
@@ -264,6 +267,10 @@ dl.feat dd{margin:0;font-family:var(--f-mono);font-size:.82rem;font-variant-nume
 
   <main class="bankview" id="viewBank" hidden>
     <section class="card bank-col">
+      <div class="tabs" role="tablist" id="setTabs">
+        <button role="tab" id="setMain" aria-selected="true">Main bank (<span id="mainCount"></span>)</button>
+        <button role="tab" id="setOM" aria-selected="false">Oxbridge Mentors (<span id="omCount"></span>)</button>
+      </div>
       <h3 id="bankTitle"></h3>
       <div class="tabs" role="tablist" id="savedTabs">
         <button role="tab" id="tabSeen" aria-selected="true">Came up <span id="seenCount"></span></button>
@@ -483,7 +490,7 @@ const TPL=[
 {w:1.2,fn:r=>{
   const ns=[
    {h:SIN+' '+X,f:Math.sin,near:'sin x ≈ x − x³/6',trig:1,d:'sin(x)'},
-   {h:'1 − '+COS+' '+X,f:x=>1-Math.cos(x),near:'1 − cos x ≈ x²/2',trig:1,d:'(1-cos(x))'},
+   {h:'1 − '+COS+' '+X,f:x=>2*Math.sin(x/2)**2,near:'1 − cos x ≈ x²/2',trig:1,d:'(1-cos(x))'},
    {h:LN+' '+X,f:Math.log,near:'ln x → −∞ as x → 0⁺',pos:1,d:'ln(x)'},
    {h:ex(X),f:Math.exp,near:'eˣ ≈ 1 + x',d:'exp(x)'},
    {h:ATAN+' '+X,f:Math.atan,near:'tan⁻¹ x ≈ x − x³/3',d:'arctan(x)'},
@@ -673,7 +680,7 @@ function genQ(t,seed){
   q.id=`g${t}-${seed}`;q.src='Random combo';q.kind=q.kind||'fn';q.lvl=q.lvl||2;return q;
 }
 function bankQ(id){const b=BANK.find(q=>q.id===id);if(!b)return null;const q=Object.assign({},b);q.kind=q.kind||'fn';return q}
-function buildQ(id){if(typeof CATMAP!=='undefined'&&CATMAP.has(id))return Object.assign({},CATMAP.get(id));if(id[0]==='b')return bankQ(id);if(id[0]==='c'){const q=catBuild(id);if(q){q.id=id;q.src='Combination';q.kind='fn'}return q}const m=/^g(\d+)-(\d+)$/.exec(id);return m?genQ(+m[1],+m[2]):null}
+function buildQ(id){if(typeof OMMAP!=='undefined'&&OMMAP.has(id))return Object.assign({},OMMAP.get(id));if(typeof CATMAP!=='undefined'&&CATMAP.has(id))return Object.assign({},CATMAP.get(id));if(id[0]==='b')return bankQ(id);if(id[0]==='c'){const q=catBuild(id);if(q){q.id=id;q.src='Combination';q.kind='fn'}return q}const m=/^g(\d+)-(\d+)$/.exec(id);return m?genQ(+m[1],+m[2]):null}
 
 /* ================= numerical analysis ================= */
 function quant(a,p){const i=Math.min(a.length-1,Math.max(0,Math.floor(p*(a.length-1))));return a[i]}
@@ -682,11 +689,15 @@ function sideLimit(f,p,s){
   if(v3===Infinity||v3===-Infinity)return{t:'inf',s:Math.sign(v3)};
   if(v2===Infinity||v2===-Infinity)return{t:'inf',s:Math.sign(v2)};
   if(isF(v2)&&isF(v3)){
-    if(isF(v1)&&Math.abs(v3-v2)<=.01*Math.abs(v2-v1)+1e-9*(1+Math.abs(v3)))return{t:'lim',v:v3};
-    if(Math.abs(v3-v2)<1e-3*(1+Math.abs(v3))&&isF(v1)&&Math.abs(v2-v1)<5e-2*(1+Math.abs(v2)))return{t:'lim',v:v3};
+    const v4=f(p+s*3.7e-10*u),v5=f(p+s*2.3e-7*u),agree=isF(v4)&&isF(v5)&&Math.abs(v4-v3)<1e-3*(1+Math.abs(v3))&&Math.abs(v5-v3)<2e-2*(1+Math.abs(v3));
+    if(agree&&isF(v1)&&Math.abs(v3-v2)<=.01*Math.abs(v2-v1)+1e-9*(1+Math.abs(v3)))return{t:'lim',v:v3};
+    if(agree&&Math.abs(v3-v2)<1e-3*(1+Math.abs(v3))&&isF(v1)&&Math.abs(v2-v1)<5e-2*(1+Math.abs(v2)))return{t:'lim',v:v3};
     if(isF(v1)&&Math.sign(v1)===Math.sign(v2)&&Math.sign(v2)===Math.sign(v3)&&Math.abs(v3)<Math.abs(v2)&&Math.abs(v2)<Math.abs(v1)&&Math.abs(v3)<.1&&Math.abs(v3)<.8*Math.abs(v2))return{t:'lim',v:0};
     const g1=Math.abs(v2)-Math.abs(v1),g2=Math.abs(v3)-Math.abs(v2);
     if(isF(v1)&&g2>.5&&g1>0&&g2>.3*g1&&Math.sign(v3)===Math.sign(v2)&&Math.abs(v3)>3)return{t:'inf',s:Math.sign(v3)};
+    /* slow, steady trends (logs inside): far-to-near probes move one way */
+    const seq=[v1,v5,v2,v4,v3];if(seq.every(isF)){const d=seq.slice(1).map((v,i)=>v-seq[i]);const mono=d.every(z=>z>=0)||d.every(z=>z<=0);
+      if(mono){const sh=d.map(Math.abs);if(sh[3]<sh[0]*.9&&sh[3]<.05*(1+Math.abs(v3)))return{t:'lim',v:v3};if(Math.abs(v3)>Math.abs(v1)&&Math.abs(v3)>2)return{t:'inf',s:Math.sign(v3)}}}
     return{t:'osc'};
   }
   return{t:'none'};
@@ -725,7 +736,8 @@ function endBeh(f,sgn){
     const m=(c-b)/9e5,m2=(b-a)/9e4;
     if(Math.abs(m-m2)<1e-3*(1+Math.abs(m))&&Math.abs(m)>1e-4){
       const C1=c-m*1e6,C2=b-m*1e5;
-      if(Math.abs(C1-C2)<1e-2*(1+Math.abs(C1)))return{t:'obl',m:m*sgn,c:C1};
+      let res=0;for(let k=1;k<=7;k++){const X0=1e6+k*.7853981,v=g(X0);res=Math.max(res,Math.abs(v-(m*X0+C1)))}
+      if(Math.abs(C1-C2)<1e-2*(1+Math.abs(C1))&&res<2e-3*(1+Math.abs(C1)))return{t:'obl',m:m*sgn,c:C1};
       return{t:'grow',s:Math.sign(c),m:m*sgn};
     }
     return{t:'inf',s:Math.sign(c)};
@@ -747,13 +759,16 @@ function analyze(f0,x0,x1){
   for(let i=0;i<=N;){
     if(Number.isNaN(ys[i])){let j=i;while(j+1<=N&&Number.isNaN(ys[j+1]))j++;
       const L=i>0?bisFin(xs[i-1],xs[i]):null,R=j<N?bisFin(xs[j+1],xs[j]):null;
-      if(L!==null&&R!==null&&R-L<dx*2.5&&j-i<=1){addSing(classifyPoint(f,(L+R)/2))}
+      if(L!==null&&R!==null&&R-L<dx*2.5&&j-i<=1){const px=j===i?xs[i]:(L+R)/2;let c=classifyPoint(f,px);if(!c){const lv=sideLimit(f,px,1);if(lv.t==='lim')c={type:'hole',x:px,y:lv.v}}addSing(c)}
       else{res.gaps.push([L,R]);
         if(L!==null){const s=sideLimit(f,L,-1);if(s.t==='inf')addSing({type:'asym',x:L,l:s,r:{t:'none'}});else if(s.t==='lim')res.ends.push({x:L,y:s.v});else if(s.t==='osc')addSing({type:'osc',x:L})}
         if(R!==null){const s=sideLimit(f,R,1);if(s.t==='inf')addSing({type:'asym',x:R,l:{t:'none'},r:s});else if(s.t==='lim')res.ends.push({x:R,y:s.v});else if(s.t==='osc')addSing({type:'osc',x:R})}
       }
       i=j+1}else i++;
   }
+  /* undefined single points that fall between samples (integers are the usual suspects) */
+  if(x1-x0<400)for(let k=Math.ceil(x0);k<=x1;k++){const v=f(k);if(isF(v))continue;const e=1e-6*(1+Math.abs(k));if(!isF(f(k-e))||!isF(f(k+e)))continue;
+    let c=classifyPoint(f,k);if(!c){const lv=sideLimit(f,k,1);if(lv.t==='lim')c={type:'hole',x:k,y:lv.v}}addSing(c)}
   /* jumps and poles between samples */
   const big=4*scale+Math.abs(med);
   /* overflow runs: the pole sits at the end next to a small (or undefined) value */
@@ -966,7 +981,154 @@ const PER_LEVEL=250,CAT={1:[],2:[],3:[]},CATMAP=new Map();
     CAT[L]=out;out.forEach(q=>CATMAP.set(q.id,q));}
 })();
 
-if(typeof module!=='undefined')module.exports={BANK,TPL,genQ,analyze,nice,quant,CAT,CATMAP,catBuild,fpOf,buildQ};
+/* ================= Oxbridge Mentors set: the 30-problem sheet + polar add-on, plus new problems at the same level ================= */
+const TT='<i>t</i>',TH='<i>θ</i>',RR='<i>r</i>';
+const cb=s=>`∛<span class="ov">${s}</span>`;
+const INT=(lo,hi,body)=>`<span class="int">∫<span class="lim"><span>${hi}</span><span>${lo}</span></span></span>${body} d${TT}`;
+function integ(g,L=40,h=0.004){let T=null;const n=Math.round(L/h);
+  const build=()=>{T=new Float64Array(2*n+1);
+    for(let i=0;i<n;i++){const a=i*h,b=a+h;T[n+i+1]=T[n+i]+(g(a)+4*g(a+h/2)+g(b))*h/6}
+    for(let i=0;i<n;i++){const a=-i*h,b=a-h;T[n-i-1]=T[n-i]-(g(a)+4*g(a-h/2)+g(b))*h/6}};
+  return x=>{if(!T)build();if(!(Math.abs(x)<=L))return NaN;let i=Math.floor(x/h)+n;if(i>=2*n)i=2*n-1;if(i<0)i=0;const a=(i-n)*h,d=x-a;return T[i]+(g(a)+4*g(a+d/2)+g(x))*d/6}}
+const sinc=t=>t===0?1:Math.sin(t)/t;
+const OMQ=[],OMMAP=new Map();
+const OMLV={'Warm-up':1,'Middle':2,'Hard':3,'Polar':2};
+function om(id,tier,sheet,o){o.id=id;o.tier=tier;o.lvl=OMLV[tier];o.src=sheet?'Mentors sheet':'Mentors-style';o.kind=o.kind||'fn';o.idea='Key move: '+o.km;OMQ.push(o);OMMAP.set(id,o)}
+function polar(id,sheet,disp,r,t,R,km,ds,extra){const o=Object.assign({kind:'param',polar:true,equal:true,disp,px:th=>r(th)*Math.cos(th),py:th=>r(th)*Math.sin(th),t,x:R.x,y:R.y,km,ds:[ds]},extra||{});om(id,'Polar',sheet,o)}
+
+/* ---------- Warm-up ---------- */
+om('ms1','Warm-up',1,{eq:X+' + '+fr(1,X),f:x=>x+1/x,x:[-4,4],y:[-7,7],ds:['y=x+1/x'],km:'split off the line. For large |x| the curve follows y = x; near 0 the 1/x part gives the pole. It is odd, so do x > 0 and rotate.'});
+om('mx1','Warm-up',0,{eq:X+' + '+fr(4,X),f:x=>x+4/x,x:[-8,8],y:[-12,12],ds:['y=x+4/x'],km:'same split as x + 1/x. Oblique asymptote y = x, pole at 0, and the turning points move to x = ±2 with y = ±4.'});
+om('mx2','Warm-up',0,{eq:X+' − '+fr(1,X),f:x=>x-1/x,x:[-4,4],y:[-6,6],ds:['y=x-1/x'],km:'y′ = 1 + 1/x² > 0, so no turning points. Zeros at ±1, oblique asymptote y = x, and the pole at 0 now goes the other way (y → −∞ as x → 0⁺).'});
+om('mx3','Warm-up',0,{eq:sup(X,2)+' + '+fr(2,X),f:x=>x*x+2/x,x:[-4,4],y:[-8,14],ds:['y=x^2+2/x'],km:'near 0 the 2/x term wins (pole, opposite signs on each side); far out the curve hugs y = x². One minimum where 2x = 2/x²: (1, 3). One zero at x = −∛2.'});
+om('ms2','Warm-up',1,{eq:fr(X,sup(X,2)+' − 1'),f:x=>x/(x*x-1),x:[-4,4],y:[-4,4],ds:['y=x/(x^2-1)'],km:'partial fractions give two poles and a tail like 1/x. y′ = −(x² + 1)/(x² − 1)² < 0, so no turning points.'});
+om('mx4','Warm-up',0,{eq:fr(X,sup(X,2)+' − 4'),f:x=>x/(x*x-4),x:[-6,6],y:[-3,3],ds:['y=x/(x^2-4)'],km:'odd, poles at x = ±2, through the origin. y′ = −(x² + 4)/(x² − 4)² < 0: decreasing on every piece, tail like 1/x.'});
+om('mx5','Warm-up',0,{eq:fr(sup(X,2),sup(X,2)+' − 1'),f:x=>x*x/(x*x-1),x:[-4,4],y:[-5,6],ds:['y=x^2/(x^2-1)'],km:'write 1 + 1/(x² − 1). Even, horizontal asymptote y = 1, poles ±1, and a local maximum at (0, 0) between them where the curve dips below the axis.'});
+om('mx6','Warm-up',0,{eq:fr(sup(X,2)+' + 1',sup(X,2)+' − 4'),f:x=>(x*x+1)/(x*x-4),x:[-6,6],y:[-5,6],ds:['y=(x^2+1)/(x^2-4)'],km:'even, poles ±2, y → 1. Between the poles y < 0 with a maximum (0, −1/4). Outside them y > 1, because the top is bigger than the bottom.'});
+om('mx7','Warm-up',0,{eq:fr(X,sup(X,2)+' + '+X+' − 2'),f:x=>x/(x*x+x-2),x:[-5,4],y:[-5,5],ds:['y=x/(x^2+x-2)'],km:'factor the bottom: (x + 2)(x − 1). Two poles, a zero at the origin, tail like 1/x. Partial fractions (2/3)/(x + 2) + (1/3)/(x − 1) show y′ < 0 everywhere.'});
+om('ms3','Warm-up',1,{eq:sup(X,2)+' '+ex(M+X),f:x=>x*x*Math.exp(-x),x:[-1.5,6],y:[-.3,1.5],ds:['y=x^2e^{-x}'],km:'exponential beats polynomial, so y → 0 on the right. Factorise y′ = x(2 − x)e^(−x) to read off both turning points.'});
+om('mx8','Warm-up',0,{eq:X+' '+ex(M+X),f:x=>x*Math.exp(-x),x:[-1.5,6],y:[-3,.6],ds:['y=xe^{-x}'],km:'y′ = (1 − x)e^(−x): one maximum (1, 1/e). y → 0 on the right, y → −∞ on the left.'});
+om('mx9','Warm-up',0,{eq:sup(X,3)+' '+ex(M+X),f:x=>x**3*Math.exp(-x),x:[-1.5,10],ds:['y=x^3e^{-x}'],km:'a triple root at 0 gives a flat inflection. y′ = x²(3 − x)e^(−x): maximum at (3, 27/e³), then it decays to 0.'});
+om('mx10','Warm-up',0,{eq:X+' '+ex(M+sup(X,2)),f:x=>x*Math.exp(-x*x),x:[-3,3],ds:['y=xe^{-x^2}'],km:'odd. Like x near 0, crushed by the Gaussian far out. y′ = (1 − 2x²)e^(−x²): turning points at x = ±1/√2.'});
+om('mx11','Warm-up',0,{eq:sup(X,2)+' '+ex(X),f:x=>x*x*Math.exp(x),x:[-7,1.5],y:[-.3,1.5],ds:['y=x^2e^x'],km:'mirror image of x²e^(−x). Touches 0 at the origin, maximum at x = −2 (y = 4/e²), y → 0 as x → −∞, blows up on the right.'});
+om('ms4','Warm-up',1,{eq:fr(LN+' '+X,X),f:x=>Math.log(x)/x,x:[-.5,10],y:[-3,.8],ds:['y=\\ln(x)/x'],km:'powers beat logs, so ln x / x → 0. y′ = (1 − ln x)/x² has one root, x = e.'});
+om('mx12','Warm-up',0,{eq:fr(LN+' '+X,rt(X)),f:x=>Math.log(x)/Math.sqrt(x),x:[-.5,30],y:[-3,1.2],ds:['y=\\ln(x)/\\sqrt{x}'],km:'y′ = (2 − ln x)/(2x^(3/2)) = 0 at x = e², giving the maximum (e², 2/e). Pole at 0⁺, decays to 0.'});
+om('mx13','Warm-up',0,{eq:fr('('+LN+' '+X+')<sup>2</sup>',X),f:x=>Math.log(x)**2/x,x:[-.3,30],y:[-.2,1.2],ds:['y=(\\ln x)^2/x'],km:'y ≥ 0 and touches 0 at x = 1. y′ = ln x(2 − ln x)/x²: minimum at x = 1, maximum at x = e² (y = 4/e²). y → +∞ as x → 0⁺.'});
+om('mx14','Warm-up',0,{eq:fr(LN+'('+sup(X,2)+')',X),f:x=>Math.log(x*x)/x,x:[-10,10],y:[-3,3],ds:['y=\\ln(x^2)/x'],km:'it is 2 ln|x| / x, an odd function. For x > 0 it is twice ln x / x (maximum (e, 2/e)); rotate about the origin for x < 0.'});
+om('ms5','Warm-up',1,{eq:X+' '+SIN+' '+X,f:x=>x*Math.sin(x),x:[-3*PI,3*PI],pi:true,ds:['y=x\\sin x'],km:'bound it: |sin x| ≤ 1 squeezes y between y = ±x. Zeros come from sin x, the growing size from x.'});
+om('mx15','Warm-up',0,{eq:X+' '+COS+' '+X,f:x=>x*Math.cos(x),x:[-3*PI,3*PI],pi:true,ds:['y=x\\cos x'],km:'odd this time (odd × even). Envelope y = ±x, zeros at 0 and π/2 + kπ. Turning points satisfy tan x = 1/x, so they are not on the envelope.'});
+om('mx16','Warm-up',0,{eq:sup(X,2)+' '+SIN+' '+X,f:x=>x*x*Math.sin(x),x:[-3*PI,3*PI],pi:true,ds:['y=x^2\\sin x'],km:'odd. Envelope ±x², flat through the origin (y ≈ x³), zeros at kπ, swings growing like x².'});
+om('mx17','Warm-up',0,{eq:rt(X)+' '+SIN+' '+X,f:x=>Math.sqrt(x)*Math.sin(x),x:[-.5,6*PI],pi:true,ds:['y=\\sqrt{x}\\sin x'],km:'only x ≥ 0. Envelope ±√x, zeros at kπ, swings growing slowly. It leaves the origin flat, like x^(3/2).'});
+om('ms6','Warm-up',1,{eq:ex(M+X)+' '+COS+' '+X,f:x=>Math.exp(-x)*Math.cos(x),x:[-1.2,3*PI],y:[-2,3],pi:true,ds:['y=e^{-x}\\cos x'],km:'zeros from cos x, size from e^(−x): the curve lives between y = ±e^(−x). y′ = 0 means tan x = −1.'});
+om('mx18','Warm-up',0,{eq:ex(M+X+'/2')+' '+SIN+' 2'+X,f:x=>Math.exp(-x/2)*Math.sin(2*x),x:[-1.5,3*PI],pi:true,ds:['y=e^{-x/2}\\sin(2x)'],km:'envelope ±e^(−x/2), zeros every π/2. Decays to the right, grows to the left.'});
+om('mx19','Warm-up',0,{eq:ex(M+sup(X,2))+' '+COS+' 3'+X,f:x=>Math.exp(-x*x)*Math.cos(3*x),x:[-3,3],ds:['y=e^{-x^2}\\cos(3x)'],km:'even. A cos 3x wave squeezed by the Gaussian envelope ±e^(−x²): maximum 1 at 0, then quickly shrinking wiggles.'});
+om('ms7','Warm-up',1,{eq:fr(sup(X,3),sup(X,2)+' − 1'),f:x=>x**3/(x*x-1),x:[-4.5,4.5],y:[-7,7],ds:['y=x^3/(x^2-1)'],km:'divide first: x + x/(x² − 1). That gives the oblique asymptote y = x and the poles x = ±1.'});
+om('mx20','Warm-up',0,{eq:fr(sup(X,3),sup(X,2)+' + 1'),f:x=>x**3/(x*x+1),x:[-4,4],ds:['y=x^3/(x^2+1)'],km:'odd, no poles. Divide: x − x/(x² + 1), so y = x is an oblique asymptote. y′ = x²(x² + 3)/(x² + 1)² ≥ 0: always increasing, flat inflection at 0.'});
+om('mx21','Warm-up',0,{eq:fr(sup(X,4),sup(X,2)+' − 1'),f:x=>x**4/(x*x-1),x:[-3.5,3.5],y:[-4,12],ds:['y=x^4/(x^2-1)'],km:'even. Divide: x² + 1 + 1/(x² − 1). Far out it hugs the parabola y = x² + 1, not a line. Poles ±1, local maximum (0, 0), minima at x = ±√2 (y = 4).'});
+om('mx22','Warm-up',0,{eq:fr('('+X+' − 1)<sup>3</sup>',sup(X,2)),f:x=>(x-1)**3/(x*x),x:[-5,6],y:[-12,6],ds:['y=(x-1)^3/x^2'],km:'divide: x − 3 + (3x − 1)/x², so the asymptote is y = x − 3. Pole at 0 (y → −∞ on both sides), flat inflection at x = 1. y′ = (x − 1)²(x + 2)/x³ gives a maximum at (−2, −27/4).'});
+om('ms8','Warm-up',1,{eq:rt(sup(X,2)+' + '+X)+' − '+X,f:x=>Math.sqrt(x*x+x)-x,x:[-6,5],y:[-1,10],ds:['y=\\sqrt{x^2+x}-x'],km:'multiply by the conjugate: x/(√(x² + x) + x). The bottom is about 2x for large x, so y → 1/2; for x → −∞, y ≈ −2x.'});
+om('mx23','Warm-up',0,{eq:rt(sup(X,2)+' + 1')+' − '+X,f:x=>Math.sqrt(x*x+1)-x,x:[-5,5],y:[-1,10],ds:['y=\\sqrt{x^2+1}-x'],km:'conjugate: 1/(√(x² + 1) + x). Always positive and always decreasing; y → 0 as x → +∞, y ≈ −2x as x → −∞. Passes through (0, 1).'});
+om('mx24','Warm-up',0,{eq:X+' − '+rt(sup(X,2)+' − 4'+X),f:x=>x-Math.sqrt(x*x-4*x),x:[-6,10],y:[-6,6],ds:['y=x-\\sqrt{x^2-4x}'],km:'domain x ≤ 0 or x ≥ 4. Conjugate: y = 4x/(x + √(x² − 4x)), so y → 2 as x → +∞. For x → −∞, y ≈ 2x − 2. Vertical tangents at the end points (0, 0) and (4, 4).'});
+om('ms9','Warm-up',1,{eq:sup(X,2)+' '+LN+' '+ab(X),f:x=>x*x*Math.log(Math.abs(x)),x:[-1.6,1.6],y:[-.4,2.5],ds:['y=x^2\\ln|x|'],km:'power beats log, so y → 0 at the origin (a hole). Use evenness, then y′ = x(2 ln|x| + 1) = 0 gives |x| = e^(−1/2).'});
+om('mx25','Warm-up',0,{eq:X+' '+LN+' '+ab(X),f:x=>x*Math.log(Math.abs(x)),x:[-1.6,1.6],y:[-.8,.8],ds:['y=x\\ln|x|'],km:'odd. y → 0 at the origin (a hole) but y′ = ln|x| + 1 → −∞, so the curve is vertical there. Zeros at ±1, turning points at |x| = 1/e with |y| = 1/e.'});
+om('mx26','Warm-up',0,{eq:sup(X,3)+' '+LN+' '+ab(X),f:x=>x**3*Math.log(Math.abs(x)),x:[-1.6,1.6],y:[-.6,1.2],ds:['y=x^3\\ln|x|'],km:'odd, hole at the origin with zero gradient. Zeros at ±1. y′ = x²(3 ln|x| + 1): turning points at |x| = e^(−1/3), |y| = 1/(3e).'});
+om('ms10','Warm-up',1,{eq:ASIN+'('+SIN+' '+X+')',f:x=>Math.asin(Math.sin(x)),x:[-2*PI,2*PI],y:[-2,2],pi:true,ds:['y=\\arcsin(\\sin x)'],km:'track the inside: arcsin returns the angle in [−π/2, π/2] with the same sine. So y = x near 0, then y = π − x, and so on: a triangle wave.'});
+om('mx27','Warm-up',0,{eq:ASIN+'('+COS+' '+X+')',f:x=>Math.asin(Math.cos(x)),x:[-2*PI,2*PI],y:[-2,2],pi:true,ds:['y=\\arcsin(\\cos x)'],km:'cos x = sin(π/2 − x), so on [0, π] this is π/2 − x, and it is even. A triangle wave between ±π/2, peaks at x = 2kπ.'});
+om('mx28','Warm-up',0,{eq:ACOS+'('+SIN+' '+X+')',f:x=>Math.acos(Math.sin(x)),x:[-2*PI,2*PI],y:[-.5,3.6],pi:true,ds:['y=\\arccos(\\sin x)'],km:'arccos u = π/2 − arcsin u, so flip the triangle wave of arcsin(sin x) and lift it by π/2. Range [0, π], corners at x = π/2 + kπ.'});
+
+/* ---------- Middle ---------- */
+om('ms11','Middle',1,{eq:SIN+'('+sup(X,2)+')',f:x=>Math.sin(x*x),x:[-4.2,4.2],y:[-1.5,1.5],ds:['y=\\sin(x^2)'],km:'let u = x². As x grows, u grows ever faster, so the zeros at x = ±√(kπ) crowd together.'});
+om('mx29','Middle',0,{eq:COS+'('+sup(X,2)+')',f:x=>Math.cos(x*x),x:[-4.2,4.2],y:[-1.5,1.5],ds:['y=\\cos(x^2)'],km:'even, starts at the top (1) and is flat there. Zeros where x² = π/2 + kπ, crests at x = ±√(2kπ): crowding together.'});
+om('mx30','Middle',0,{eq:SIN+'('+sup(X,3)+')',f:x=>Math.sin(x**3),x:[-2.6,2.6],y:[-1.5,1.5],ds:['y=\\sin(x^3)'],km:'odd and very flat at 0 (y ≈ x³). Zeros at x = ∛(kπ), crowding much faster than for sin(x²).'});
+om('mx31','Middle',0,{eq:SIN+' '+rt(ab(X)),f:x=>Math.sin(Math.sqrt(Math.abs(x))),x:[-60,60],y:[-1.5,1.5],ds:['y=\\sin(\\sqrt{|x|})'],km:'even. The inside grows slowly, so the waves spread out: zeros at x = ±(kπ)². Cusp at 0, because √|x| has infinite slope there.'});
+om('ms12','Middle',1,{eq:SIN+'(1/'+X+')',f:x=>Math.sin(1/x),x:[-1.2,1.2],y:[-1.4,1.4],ds:['y=\\sin(1/x)'],km:'substitute u = 1/x. x → 0 sends u → ±∞, so sin u oscillates for ever; x → ±∞ sends u → 0, so y ≈ 1/x → 0.'});
+om('mx32','Middle',0,{eq:SIN+'(1/'+sup(X,2)+')',f:x=>Math.sin(1/(x*x)),x:[-1.5,1.5],y:[-1.4,1.4],ds:['y=\\sin(1/x^2)'],km:'even. u = 1/x² → +∞ as x → 0: endless oscillation. Far out y ≈ 1/x² → 0 from above; the last crest is at x = ±√(2/π).'});
+om('mx33','Middle',0,{eq:COS+'(1/'+X+')',f:x=>Math.cos(1/x),x:[-1.2,1.2],y:[-1.4,1.4],ds:['y=\\cos(1/x)'],km:'even. y → 1 as |x| → ∞ (y ≈ 1 − 1/(2x²)). Zeros at x = 1/(π/2 + kπ), crowding into 0, with no limit there.'});
+om('ms13','Middle',1,{eq:X+' '+SIN+'(1/'+X+')',f:x=>x*Math.sin(1/x),x:[-1.2,1.2],y:[-.4,1.2],ds:['y=x\\sin(1/x)'],km:'u = 1/x gives sin u / u → 1 far out. Near 0, |y| ≤ |x| squeezes y → 0 (a hole), trapping the wiggles between y = ±|x|.'});
+om('mx34','Middle',0,{eq:sup(X,2)+' '+SIN+'(1/'+X+')',f:x=>x*x*Math.sin(1/x),x:[-1.5,1.5],y:[-1.5,1.5],equal:true,ds:['y=x^2\\sin(1/x)'],km:'odd. The envelope ±x² squeezes it to 0 at the origin. For large |x|, sin(1/x) ≈ 1/x − 1/(6x³), so y ≈ x: oblique asymptote y = x.'});
+om('mx35','Middle',0,{eq:X+' '+COS+'(1/'+X+')',f:x=>x*Math.cos(1/x),x:[-1.5,1.5],y:[-1.5,1.5],equal:true,ds:['y=x\\cos(1/x)'],km:'odd. Squeezed by ±|x| at the origin (a hole). Far out cos(1/x) ≈ 1 − 1/(2x²), so y ≈ x − 1/(2x): oblique asymptote y = x.'});
+om('ms14','Middle',1,{eq:ex('1/'+X),f:x=>Math.exp(1/x),x:[-3.5,3.5],y:[-.3,4.5],ds:['y=e^{1/x}'],km:'track the inside u = 1/x: u → +∞ at 0⁺ (blows up), u → −∞ at 0⁻ (y → 0, flat), u → 0 far out (y → 1).'});
+om('mx36','Middle',0,{eq:ex('1/('+X+' − 1)'),f:x=>Math.exp(1/(x-1)),x:[-3,5],y:[-.3,5],ds:['y=e^{1/(x-1)}'],km:'e^(1/x) moved right by 1: pole on the right of x = 1, flat approach to (1, 0) from the left, y → 1 at both ends, through (0, 1/e).'});
+om('mx37','Middle',0,{eq:sup(X,2)+' '+ex('1/'+X),f:x=>x*x*Math.exp(1/x),x:[-4,3],y:[-.5,6],ds:['y=x^2e^{1/x}'],km:'pole at 0⁺, y → 0 as x → 0⁻. Far out e^(1/x) ≈ 1 + 1/x + 1/(2x²), so y ≈ x² + x + 1/2: it hugs a parabola. y′ = e^(1/x)(2x − 1): minimum at (1/2, e²/4).'});
+om('ms15','Middle',1,{eq:ex(M+'1/'+sup(X,2)),f:x=>x===0?NaN:Math.exp(-1/(x*x)),x:[-3.5,3.5],y:[-.2,1.3],ds:['y=e^{-1/x^2}'],km:'track the inside u = −1/x² ≤ 0. As x → 0, u → −∞, so y → 0 faster than any power (a flat hole); far out u → 0, so y → 1.'});
+om('mx38','Middle',0,{eq:X+' '+ex(M+'1/'+sup(X,2)),f:x=>x===0?NaN:x*Math.exp(-1/(x*x)),x:[-3,3],y:[-3,3],equal:true,ds:['y=xe^{-1/x^2}'],km:'odd. Extremely flat through the origin (a hole), then follows y = x far out (y ≈ x − 1/x). y′ = e^(−1/x²)(1 + 2/x²) > 0: always increasing.'});
+om('mx39','Middle',0,{eq:ex(M+'1/'+ab(X)),f:x=>x===0?NaN:Math.exp(-1/Math.abs(x)),x:[-6,6],y:[-.2,1.3],ds:['y=e^{-1/|x|}'],km:'even. As x → 0, −1/|x| → −∞, so y → 0 (a flat hole). Far out y ≈ 1 − 1/|x| → 1 from below, more slowly than e^(−1/x²).'});
+om('ms16','Middle',1,{eq:TAN+' '+X+' − '+X,f:x=>Math.tan(x)-x,x:[-7,7],y:[-7,7],pi:true,ds:['y=\\tan x-x'],km:'y′ = sec²x − 1 = tan²x ≥ 0: y never decreases and is flat only at x = kπ. Each branch of tan x is sheared by −x but still runs from −∞ to +∞.'});
+om('mx40','Middle',0,{eq:X+' '+TAN+' '+X,f:x=>x*Math.tan(x),x:[-2*PI,2*PI],y:[-8,8],pi:true,ds:['y=x\\tan x'],km:'even (odd × odd). Near 0, y ≈ x² (a minimum). Poles at π/2 + kπ, zeros at x = kπ; only the one at 0 is a touch.'});
+om('mx41','Middle',0,{eq:TAN+' '+X+' − 2'+X,f:x=>Math.tan(x)-2*x,x:[-7,7],y:[-8,8],pi:true,ds:['y=\\tan x-2x'],km:'y′ = tan²x − 1, zero where tan x = ±1: turning points at x = ±π/4 + kπ. Odd, poles at π/2 + kπ.'});
+om('mx42','Middle',0,{eq:X+' − '+SIN+' '+X,f:x=>x-Math.sin(x),x:[-4*PI,4*PI],pi:true,ds:['y=x-\\sin x'],km:'y′ = 1 − cos x ≥ 0: never decreases, flat inflections at x = 2kπ. It wobbles around y = x, staying between y = x − 1 and y = x + 1.'});
+om('ms17','Middle',1,{eq:LN+'('+SIN+' '+X+')',f:x=>Math.log(Math.sin(x)),x:[-.3,3*PI],y:[-4.5,.8],pi:true,ds:['y=\\ln(\\sin x)'],km:'track the inside: 0 < sin x ≤ 1 gives ln(sin x) ≤ 0, equal to 0 only at x = π/2 + 2kπ. As sin x → 0⁺ at the ends of each arch, y → −∞.'});
+om('mx43','Middle',0,{eq:LN+'('+COS+' '+X+')',f:x=>Math.log(Math.cos(x)),x:[-2*PI,2*PI],y:[-4.5,.8],pi:true,ds:['y=\\ln(\\cos x)'],km:'arches over (−π/2, π/2) + 2kπ, each touching y = 0 at x = 2kπ. Near 0, ln(cos x) ≈ −x²/2.'});
+om('mx44','Middle',0,{eq:LN+' '+ab(SIN+' '+X),f:x=>Math.log(Math.abs(Math.sin(x))),x:[-2*PI,2*PI],y:[-4.5,.8],pi:true,ds:['y=\\ln|\\sin x|'],km:'the absolute value fills the gaps: arches over every interval (kπ, (k + 1)π), period π, tops at (π/2 + kπ, 0), vertical asymptotes at every x = kπ.'});
+om('mx45','Middle',0,{eq:LN+'(2 + '+SIN+' '+X+')',f:x=>Math.log(2+Math.sin(x)),x:[-2*PI,2*PI],y:[-.5,1.5],pi:true,ds:['y=\\ln(2+\\sin x)'],km:'the inside stays between 1 and 3, so y is defined everywhere and lies between 0 and ln 3. Same turning points as sin x; the minimum touches the axis at 3π/2.'});
+om('ms18','Middle',1,{eq:fr(X,ex(X)+' − 1'),f:x=>x/Math.expm1(x),x:[-5,5],y:[-.5,5.5],ds:['y=x/(e^x-1)'],km:'series: eˣ − 1 = x(1 + x/2 + …), so y → 1 at 0 (a hole). For x → −∞, eˣ → 0 so y ≈ −x. y decreases throughout.'});
+om('mx46','Middle',0,{eq:fr(X,ex(X)+' + 1'),f:x=>x/(Math.exp(x)+1),x:[-5,6],y:[-5,1],ds:['y=x/(e^x+1)'],km:'no hole: the bottom is never 0. Far left eˣ → 0 so y ≈ x (oblique asymptote y = x). Far right y → 0. One maximum where eˣ(x − 1) = 1, and there y = x − 1.'});
+om('mx47','Middle',0,{eq:fr(ex(X)+' − 1',X),f:x=>Math.expm1(x)/x,x:[-5,3],y:[-.5,6],ds:['y=(e^x-1)/x'],km:'series gives y → 1 at 0 (a hole). Positive everywhere. y → 0 as x → −∞ (like −1/x), y → ∞ as x → +∞. Increasing throughout.'});
+om('mx48','Middle',0,{eq:fr(sup(X,2),ex(X)+' − 1'),f:x=>x*x/Math.expm1(x),x:[-4,10],y:[-4,1.5],ds:['y=x^2/(e^x-1)'],km:'series: y ≈ x near 0, a hole at the origin. Negative for x < 0, where y ≈ −x² → −∞. For x > 0 a single maximum where 2(eˣ − 1) = x eˣ, then decay to 0.'});
+om('ms19','Middle',1,{eq:fr('1 − '+COS+' '+X,sup(X,2)),f:x=>x===0?NaN:2*Math.sin(x/2)**2/(x*x),x:[-4*PI,4*PI],y:[-.1,.6],pi:true,ds:['y=(1-\\cos x)/x^2'],km:'half-angle: 1 − cos x = 2 sin²(x/2), so y = ½(sin(x/2)/(x/2))². It tends to ½ at 0, stays ≥ 0, and is at most 2/x².'});
+om('mx49','Middle',0,{eq:fr('1 − '+COS+' '+X,X),f:x=>x===0?NaN:2*Math.sin(x/2)**2/x,x:[-4*PI,4*PI],y:[-.9,.9],pi:true,ds:['y=(1-\\cos x)/x'],km:'odd. Near 0 it is about x/2 (a hole at the origin). Touches 0 at x = 2kπ; y ≥ 0 for x > 0, between the envelopes 0 and 2/x.'});
+om('mx50','Middle',0,{eq:fr(sup(SIN,2)+X,sup(X,2)),f:x=>x===0?NaN:Math.sin(x)**2/(x*x),x:[-3*PI,3*PI],y:[-.1,1.2],pi:true,ds:['y=\\sin^2x/x^2'],km:'it is (sin x / x)²: 1 at 0 (a hole), never negative, touches 0 at x = kπ (k ≠ 0), squeezed under 1/x².'});
+om('ms20','Middle',1,{eq:fr(SIN+' '+X+' − '+X,sup(X,3)),f:x=>x===0?NaN:(Math.abs(x)<1e-3?-1/6+x*x/120:(Math.sin(x)-x)/x**3),x:[-12,12],y:[-.25,.05],ds:['y=(\\sin x-x)/x^3'],km:'Maclaurin: sin x = x − x³/6 + … gives y → −1/6 at 0. For large |x|, y ≈ −1/x² (the sin x / x³ part is much smaller).'});
+om('mx51','Middle',0,{eq:fr(X+' − '+SIN+' '+X,sup(X,2)),f:x=>x===0?NaN:(Math.abs(x)<1e-3?x/6:(x-Math.sin(x))/(x*x)),x:[-12,12],y:[-.4,.4],ds:['y=(x-\\sin x)/x^2'],km:'odd. Maclaurin: x − sin x ≈ x³/6, so y ≈ x/6 near 0 (a hole at the origin). Far out y ≈ 1/x. Positive for x > 0.'});
+om('mx52','Middle',0,{eq:fr(ex(X)+' − 1 − '+X,sup(X,2)),f:x=>x===0?NaN:(Math.abs(x)<1e-4?.5+x/6:(Math.expm1(x)-x)/(x*x)),x:[-6,3],y:[-.2,3],ds:['y=(e^x-1-x)/x^2'],km:'Maclaurin: eˣ = 1 + x + x²/2 + …, so y → ½ at 0 (a hole). Far left y ≈ −1/x → 0 from above; far right it blows up.'});
+om('ms21','Middle',1,{eq:fr(LN+' '+X,X+' − 1'),f:x=>x===1?NaN:Math.log(x)/(x-1),x:[-.3,6],y:[-.3,4],ds:['y=\\ln(x)/(x-1)'],km:'put t = x − 1: ln(1 + t)/t → 1 as t → 0, so a hole at (1, 1). y′ < 0 throughout: the curve falls from +∞ at x = 0 to 0 as x → ∞.'});
+om('mx53','Middle',0,{eq:fr(LN+'(1 + '+X+')',X),f:x=>x===0?NaN:Math.log1p(x)/x,x:[-1.3,6],y:[-.3,4],ds:['y=\\ln(1+x)/x'],km:'domain x > −1. ln(1 + x) ≈ x − x²/2, so y → 1 at 0 (a hole). y → +∞ as x → −1⁺ and y → 0 as x → ∞. Decreasing throughout.'});
+om('mx54','Middle',0,{eq:fr(X+' − 1',LN+' '+X),f:x=>x===1?NaN:(x-1)/Math.log(x),x:[-.3,8],y:[-.3,4],ds:['y=(x-1)/\\ln x'],km:'the flip of ln x/(x − 1). Domain x > 0, hole at (1, 1). As x → 0⁺, y → 0 (ln x → −∞). Increasing, and y → ∞ slowly as x → ∞.'});
+om('ms22','Middle',1,{eq:COS+' '+X+' + '+COS+'('+rt('2')+' '+X+')',f:x=>Math.cos(x)+Math.cos(Math.SQRT2*x),x:[-30,30],y:[-2.4,2.4],ds:['y=\\cos x+\\cos(\\sqrt{2}x)'],km:'sum to product: 2 cos((√2 + 1)x/2) cos((√2 − 1)x/2). A fast wave inside a slow envelope; never periodic because √2 is irrational.'});
+om('mx55','Middle',0,{eq:COS+' 4'+X+' + '+COS+' 5'+X,f:x=>Math.cos(4*x)+Math.cos(5*x),x:[-2*PI,2*PI],y:[-2.4,2.4],pi:true,ds:['y=\\cos(4x)+\\cos(5x)'],km:'sum to product: 2 cos(9x/2) cos(x/2). A fast wave inside the slow envelope ±2 cos(x/2): beats that pinch to 0 at x = π + 2kπ. Period 2π.'});
+om('mx56','Middle',0,{eq:COS+' '+X+' − '+COS+'(1.2'+X+')',f:x=>Math.cos(x)-Math.cos(1.2*x),x:[-35,35],y:[-2.4,2.4],ds:['y=\\cos x-\\cos(1.2x)'],km:'difference to product: 2 sin(1.1x) sin(0.1x). The slow envelope ±2 sin(0.1x) is 0 at the origin and every 10π, so the beats pinch there. Even.'});
+
+/* ---------- Hard ---------- */
+om('ms23','Hard',1,{eq:sup(X,X),f:x=>x>0?Math.pow(x,x):NaN,x:[-.3,2.2],y:[-.3,4.2],ds:['y=x^x\\{x>0\\}'],km:'write xˣ = e^(x ln x). x ln x → 0 as x → 0⁺, so y → 1 (an open end). Then y′ = xˣ(1 + ln x) vanishes at x = 1/e.'});
+om('mx57','Hard',0,{eq:sup(X,'2'+X),f:x=>x>0?Math.pow(x,2*x):NaN,x:[-.3,2],y:[-.3,5],ds:['y=x^{2x}\\{x>0\\}'],km:'it is (xˣ)² = e^(2x ln x): the same shape, open end at (0, 1), minimum at x = 1/e with y = e^(−2/e).'});
+om('mx58','Hard',0,{eq:sup(par(fr(1,X)),X),f:x=>x>0?Math.pow(x,-x):NaN,x:[-.3,4],y:[-.3,1.8],ds:['y=(1/x)^x\\{x>0\\}'],km:'write e^(−x ln x): open end at (0, 1), maximum at x = 1/e (y = e^(1/e)), then y → 0 faster than any exponential.'});
+om('ms24','Hard',1,{eq:sup(X,'1/'+X),f:x=>x>0?Math.pow(x,1/x):NaN,x:[-.3,10],y:[-.3,1.8],ds:['y=x^{1/x}\\{x>0\\}'],km:'write e^((ln x)/x): the exponent is the ln x / x curve, with its maximum at x = e, so y_max = e^(1/e). y → 1 as x → ∞ and y → 0 as x → 0⁺.'});
+om('mx59','Hard',0,{eq:sup(X,'1/'+X+'<sup>2</sup>'),f:x=>x>0?Math.pow(x,1/(x*x)):NaN,x:[-.3,8],y:[-.3,1.6],ds:['y=x^{1/x^2}\\{x>0\\}'],km:'the exponent ln x / x² peaks at x = √e with value 1/(2e), so the maximum is e^(1/(2e)). y → 0 at 0⁺ (very flat) and y → 1 as x → ∞.'});
+om('mx60','Hard',0,{eq:sup(X,M+'1/'+X),f:x=>x>0?Math.pow(x,-1/x):NaN,x:[-.3,10],y:[-.3,4],ds:['y=x^{-1/x}\\{x>0\\}'],km:'exponent −ln x / x: y → +∞ as x → 0⁺, a minimum e^(−1/e) at x = e, then y → 1 from below.'});
+om('ms25','Hard',1,{eq:sup(X,SIN+' '+X),f:x=>x>0?Math.exp(Math.sin(x)*Math.log(x)):NaN,x:[-.3,8],y:[-.5,12],ds:['y=x^{\\sin x}\\{x>0\\}'],km:'write e^(sin x ln x). y = 1 where sin x = 0 or x = 1, and the curve swings between 1/x and x, touching y = x where sin x = 1 and y = 1/x where sin x = −1.'});
+om('mx61','Hard',0,{eq:sup(X,COS+' '+X),f:x=>x>0?Math.exp(Math.cos(x)*Math.log(x)):NaN,x:[-.3,8],y:[-.5,9],ds:['y=x^{\\cos x}\\{x>0\\}'],km:'write e^(cos x ln x). Near 0 it behaves like x, so it starts at (0, 0). y = 1 at x = 1 and wherever cos x = 0; it swings between 1/x and x, touching y = x at x = 2kπ.'});
+om('mx62','Hard',0,{eq:'('+SIN+' '+X+')<sup>'+SIN+' '+X+'</sup>',f:x=>{const s=Math.sin(x);return s>0?Math.exp(s*Math.log(s)):NaN},x:[-.3,3*PI],y:[-.2,1.3],pi:true,ds:['y=(\\sin x)^{\\sin x}'],km:'let u = sin x, which runs 0 → 1 → 0 over each arch (2kπ, (2k + 1)π). uᵘ starts at 1, dips to e^(−1/e) when u = 1/e and is back to 1 at u = 1. So each arch has two minima and a local maximum of 1 in the middle, with open ends at height 1.'});
+om('ms26','Hard',1,{eq:sup(par('1 + '+fr(1,X)),X),f:x=>{const b=1+1/x;return b>0?Math.pow(b,x):NaN},x:[-5.5,5.5],y:[-.3,6],ds:['y=(1+1/x)^x'],km:'write e^(x ln(1 + 1/x)). With u = 1/x, ln(1 + u)/u → 1, so y → e at both ends. The exponent is increasing, so there are no turning points.'});
+om('mx63','Hard',0,{eq:sup(par('1 − '+fr(1,X)),X),f:x=>{const b=1-1/x;return b>0?Math.pow(b,x):NaN},x:[-6,6],y:[-.2,1.3],ds:['y=(1-1/x)^x'],km:'domain x > 1 or x < 0. Both ends give 1/e (put u = −1/x). The right piece rises from 0 at x = 1⁺ towards 1/e; the left piece falls from 1 at x = 0⁻ towards 1/e.'});
+om('mx64','Hard',0,{eq:sup(par('1 + '+fr(1,X)),X+' + 1'),f:x=>{const b=1+1/x;return b>0?Math.pow(b,x+1):NaN},x:[-6,6],y:[-.3,8],ds:['y=(1+1/x)^{x+1}'],km:'domain x > 0 or x < −1. y → e at both ends: from above on the right, from below on the left. y → ∞ as x → 0⁺ and y → 1 as x → −1⁻.'});
+om('ms27','Hard',1,{eq:sup(par('1 + '+X),'1/'+X),f:x=>x===0?NaN:(x>-1?Math.exp(Math.log1p(x)/x):NaN),x:[-1.3,5.5],y:[-.3,6],ds:['y=(1+x)^{1/x}'],km:'write e^(ln(1 + x)/x). The standard limit ln(1 + x)/x → 1 gives a hole at (0, e). The exponent decreases from +∞ at x = −1 to 0, so y falls from +∞ to 1.'});
+om('mx65','Hard',0,{eq:sup(par('1 − '+X),'1/'+X),f:x=>x===0?NaN:(x<1?Math.exp(Math.log1p(-x)/x):NaN),x:[-6,1.3],y:[-.2,1.3],ds:['y=(1-x)^{1/x}'],km:'domain x < 1. ln(1 − x)/x → −1 at 0, so a hole at (0, 1/e). y → 0 as x → 1⁻ and y → 1 as x → −∞. Decreasing throughout.'});
+om('mx66','Hard',0,{eq:sup(par('1 + '+sup(X,2)),'1/'+X),f:x=>x===0?NaN:Math.exp(Math.log1p(x*x)/x),x:[-8,8],y:[-.2,2.2],ds:['y=(1+x^2)^{1/x}'],km:'write e^(ln(1 + x²)/x). The exponent is odd, about x near 0 and → 0 at both ends, so y → 1 at 0 (a hole) and at ±∞, and y(−x) = 1/y(x). One maximum for x > 0 and a matching minimum for x < 0.'});
+om('ms28','Hard',1,{eq:sup(X,'1/3')+'('+X+' − 1)<sup>2/3</sup>',f:x=>Math.cbrt(x)*Math.cbrt((x-1)**2),x:[-2.5,3.5],y:[-3.5,3],ds:['y=\\sqrt[3]{x(x-1)^2}'],km:'factor out x: x(1 − 1/x)^(2/3) ≈ x − 2/3, the asymptote. Near 0, y ≈ x^(1/3) (vertical tangent); near 1, y ≈ (x − 1)^(2/3) (a cusp).'});
+om('mx67','Hard',0,{eq:sup(X,'2/3')+'('+X+' − 1)<sup>1/3</sup>',f:x=>Math.cbrt(x*x)*Math.cbrt(x-1),x:[-2.5,3.5],y:[-3.5,3],ds:['y=\\sqrt[3]{x^2(x-1)}'],km:'factor out x: y ≈ x − 1/3 far out. Near 0, y ≈ −x^(2/3): a cusp pointing up (a local maximum). Near 1, y ≈ (x − 1)^(1/3): vertical tangent. Minimum at (2/3, −∛4/3).'});
+om('mx68','Hard',0,{eq:'('+sup(X,2)+' − 1)<sup>2/3</sup>',f:x=>Math.cbrt((x*x-1)**2),x:[-2.5,2.5],y:[-.5,3],ds:['y=\\sqrt[3]{(x^2-1)^2}'],km:'even, real cube roots, so defined everywhere and y ≥ 0. Cusps (minima) at x = ±1, a smooth maximum (0, 1) between them, and y grows like |x|^(4/3).'});
+om('mx69','Hard',0,{eq:cb(sup(X,3)+' − '+X),f:x=>Math.cbrt(x**3-x),x:[-2.5,2.5],y:[-2.5,2.5],equal:true,ds:['y=\\sqrt[3]{x^3-x}'],km:'odd. Zeros at 0 and ±1, each with a vertical tangent (a simple root inside a cube root). Far out ∛(x³ − x) = x(1 − 1/x²)^(1/3) ≈ x − 1/(3x): asymptote y = x. Turning points at x = ±1/√3.'});
+om('ms29','Hard',1,{disp:`${YV} = ${INT('0',X,fr(SIN+' '+TT,TT))}`,f:integ(sinc),x:[-4*PI,4*PI],y:[-2.2,2.2],pi:true,ds:['y=\\int_{0}^{x}\\frac{\\sin t}{t}dt'],km:'the Fundamental Theorem of Calculus: y′ = sin x / x, so turning points at x = kπ and swings that shrink like 1/x. The limit is π/2 (odd, so −π/2 on the left).'});
+om('mx70','Hard',0,{disp:`${YV} = ${INT('0',X,ex(M+TT+'<sup>2</sup>'))}`,f:integ(t=>Math.exp(-t*t)),x:[-4,4],y:[-1.3,1.3],ds:['y=\\int_{0}^{x}e^{-t^2}dt'],km:'FTC: y′ = e^(−x²) > 0, so always increasing, steepest at 0 (gradient 1) with an inflection there. Odd, levelling off at ±√π/2.'});
+om('mx71','Hard',0,{disp:`${YV} = ${INT('0',X,SIN+'('+TT+'<sup>2</sup>)')}`,f:integ(t=>Math.sin(t*t)),x:[-6,6],y:[-1.2,1.2],ds:['y=\\int_{0}^{x}\\sin(t^2)dt'],km:'FTC: y′ = sin(x²), so turning points at x = ±√(kπ). Odd, very flat at 0 (y ≈ x³/3), swings that shrink and speed up, settling at ±√(π/8).'});
+om('mx72','Hard',0,{disp:`${YV} = ${INT('0',X,fr(1,'1 + '+TT+'<sup>4</sup>'))}`,f:integ(t=>1/(1+t**4)),x:[-6,6],y:[-1.5,1.5],ds:['y=\\int_{0}^{x}\\frac{1}{1+t^4}dt'],km:'FTC: y′ = 1/(1 + x⁴) > 0: always increasing, gradient 1 at the origin. Odd. The integrand decays like 1/t⁴, so y levels off, at ±π/(2√2).'});
+om('mx73','Hard',0,{disp:`${YV} = ${INT('0',X,ab(SIN+' '+TT))}`,f:integ(t=>Math.abs(Math.sin(t))),x:[-3*PI,3*PI],y:[-7,7],pi:true,ds:['y=\\int_{0}^{x}|\\sin t|dt'],km:'FTC: y′ = |sin x| ≥ 0, so it never decreases and is flat at every x = kπ. Each hump adds 2, so y climbs a smooth staircase around the line y = 2x/π.'});
+om('ms30','Hard',1,{kind:'implicit',disp:`${sup(X,3)} + ${sup(YV,3)} = 3${X}${YV}`,F:(x,y)=>x**3+y**3-3*x*y,x:[-2.5,2.5],y:[-2.5,2.5],equal:true,ds:['x^3+y^3=3xy'],km:'put y = tx: x = 3t/(1 + t³), y = 3t²/(1 + t³). The loop is t ≥ 0, and the branches run off along the asymptote x + y + 1 = 0 as t → −1.'});
+om('mx74','Hard',0,{kind:'implicit',disp:`(${sup(X,2)} + ${sup(YV,2)})<sup>2</sup> = 2(${sup(X,2)} − ${sup(YV,2)})`,F:(x,y)=>(x*x+y*y)**2-2*(x*x-y*y),x:[-2,2],y:[-1.4,1.4],equal:true,ds:['(x^2+y^2)^2=2(x^2-y^2)'],km:'go polar: r² = 2 cos 2θ. Two loops through the origin, crossing it at 45°, reaching (±√2, 0). Symmetric in both axes.'});
+om('mx75','Hard',0,{kind:'implicit',disp:`${sup(X,2)}${sup(YV,2)} = ${sup(X,2)} + ${sup(YV,2)}`,F:(x,y)=>x*x*y*y-x*x-y*y,x:[-4,4],y:[-4,4],equal:true,marks:[{x:0,y:0}],ds:['x^2y^2=x^2+y^2'],km:'solve for y²: y² = x²/(x² − 1), so |x| > 1, plus the lone point (0, 0). Four branches with asymptotes x = ±1 and y = ±1; symmetric in both axes and in y = x.'});
+om('mx76','Hard',0,{disp:`${sup(X,3)} + ${sup(YV,3)} = 1`,f:x=>Math.cbrt(1-x**3),x:[-3,3],y:[-3,3],equal:true,ds:['x^3+y^3=1'],km:'solve: y = ∛(1 − x³). Through (1, 0) and (0, 1), symmetric in y = x. Horizontal tangent at (0, 1), vertical tangent at (1, 0), and for large |x| it hugs the asymptote y = −x.'});
+om('mx77','Hard',0,{kind:'implicit',disp:`(${sup(X,2)} + ${sup(YV,2)} − 1)<sup>3</sup> = ${sup(X,2)}${sup(YV,3)}`,F:(x,y)=>(x*x+y*y-1)**3-x*x*y**3,x:[-1.6,1.6],y:[-1.3,1.6],equal:true,ds:['(x^2+y^2-1)^3=x^2y^3'],km:'only x² appears, so it is symmetric in the y-axis. On the axes: y = 0 gives x = ±1, and x = 0 gives y = ±1. Near the top of the y-axis the right side pushes the curve in, making a heart with a dip at (0, 1) and a point at (0, −1).'});
+
+/* ---------- Polar ---------- */
+polar('mp1',1,`${RR} = 1 + ${COS} ${TH}`,t=>1+Math.cos(t),[0,TAU],{x:[-1,2.5],y:[-1.6,1.6]},'symmetric about the initial line, so tabulate 0 ≤ θ ≤ π and reflect. r ≥ 0, largest at θ = 0 (r = 2), with a cusp at the origin where r = 0 at θ = π.','r=1+\\cos\\theta');
+polar('mp2',1,`${RR} = 1 + 2 ${COS} ${TH}`,t=>1+2*Math.cos(t),[0,TAU],{x:[-1,3.5],y:[-2.2,2.2]},'r = 0 at θ = 2π/3 and 4π/3, and r < 0 between them. A negative r is plotted in the opposite direction, which draws the inner loop through (1, 0).','r=1+2\\cos\\theta');
+polar('mp3',1,`${RR} = ${TH},&ensp;0 ≤ ${TH} ≤ 4π`,t=>t,[0,4*PI],{x:[-13,14],y:[-12,12]},'r grows steadily, so the curve winds out from the origin, and arms along any ray are 2π apart. Two turns end at (4π, 0).','r=\\theta');
+polar('mp4',1,`${RR} = 2 ${COS} ${TH}`,t=>2*Math.cos(t),[0,PI],{x:[-.6,2.6],y:[-1.3,1.3]},'multiply by r: r² = 2r cos θ is x² + y² = 2x, the circle centre (1, 0), radius 1, through the origin. It is traced once for −π/2 ≤ θ ≤ π/2.','r=2\\cos\\theta');
+polar('mp5',1,`${RR} = ${SIN} 2${TH}`,t=>Math.sin(2*t),[0,TAU],{x:[-1.3,1.3],y:[-1.3,1.3]},'zeros at θ = kπ/2 and tips (|r| = 1) at odd multiples of π/4. Negative r flips two of the petals across the origin, so you get four petals.','r=\\sin(2\\theta)');
+polar('mp6',1,`${RR} = ${COS} 3${TH}`,t=>Math.cos(3*t),[0,PI],{x:[-1.2,1.3],y:[-1.1,1.1]},'r = cos nθ has n petals for odd n (2n for even n). Tips point along θ = 0, 2π/3, 4π/3; r = 0 at θ = π/6, π/2, 5π/6.','r=\\cos(3\\theta)');
+polar('mp7',0,`${RR} = 2 + ${COS} ${TH}`,t=>2+Math.cos(t),[0,TAU],{x:[-1.6,3.4],y:[-2.4,2.4]},'r never reaches 0 (it stays between 1 and 3), so there is no loop and no cusp: a smooth oval-like limaçon, widest at (3, 0), crossing the y-axis at (0, ±2).','r=2+\\cos\\theta');
+polar('mp8',0,`${RR} = ${SIN} 3${TH}`,t=>Math.sin(3*t),[0,PI],{x:[-1.2,1.2],y:[-1.2,1.1]},'three petals (n = 3 is odd), each 2π/3 apart. Tips at θ = π/6, 5π/6 and (via r = −1 at θ = π/2) straight down.','r=\\sin(3\\theta)');
+polar('mp9',0,`${RR} = ${COS} 2${TH}`,t=>Math.cos(2*t),[0,TAU],{x:[-1.3,1.3],y:[-1.3,1.3]},'n = 2 is even, so four petals. Tips along both axes: r = 1 at θ = 0 and π, and r = −1 at θ = π/2, plotted the other way. Zeros at odd multiples of π/4.','r=\\cos(2\\theta)');
+polar('mp10',0,`${RR} = 2 ${SIN} ${TH}`,t=>2*Math.sin(t),[0,PI],{x:[-1.3,1.3],y:[-.6,2.6]},'multiply by r: x² + y² = 2y, a circle centre (0, 1), radius 1, touching the x-axis at the origin. One trip round for 0 ≤ θ ≤ π.','r=2\\sin\\theta');
+polar('mp11',0,`${RR} = 1 + 2 ${SIN} ${TH}`,t=>1+2*Math.sin(t),[0,TAU],{x:[-2.2,2.2],y:[-1,3.5]},'like 1 + 2 cos θ turned a quarter-turn: symmetric about the y-axis, outer loop up to (0, 3), inner loop where r < 0 (7π/6 < θ < 11π/6) reaching (0, 1).','r=1+2\\sin\\theta');
+polar('mp12',0,`${RR} = ${ex(TH+'/8')},&ensp;0 ≤ ${TH} ≤ 6π`,t=>Math.exp(t/8),[0,6*PI],{x:[-8,8],y:[-7,7]},'r grows by the same factor e^(π/4) every quarter-turn, so the gaps between arms grow: an equiangular (logarithmic) spiral. It never reaches the origin going backwards.','r=e^{\\theta/8}');
+polar('mp13',0,`${RR} = ${fr(1,TH)},&ensp;${TH} > 0`,t=>1/t,[0.12,8*PI],{x:[-.6,3],y:[-.6,1.4]},'y = sin θ / θ → 1 as θ → 0, while x → ∞: a horizontal asymptote y = 1. As θ grows, r → 0, so the curve spirals into the origin.','r=1/\\theta');
+polar('mp14',0,`${RR} = ${fr(2,'1 + '+COS+' '+TH)}`,t=>2/(1+Math.cos(t)),[-PI+.25,PI-.25],{x:[-6,2],y:[-4.5,4.5]},'multiply out: r + r cos θ = 2, so r = 2 − x. Square: x² + y² = (2 − x)², giving y² = 4 − 4x. A parabola opening left, vertex (1, 0); r → ∞ as θ → ±π.','r=\\frac{2}{1+\\cos\\theta}');
+polar('mp15',0,`${RR} = ${fr(1,COS+' '+TH)}`,t=>1/Math.cos(t),[-1.45,1.45],{x:[-1,3],y:[-2.5,2.5]},'multiply by cos θ: r cos θ = 1, which is just x = 1. A vertical straight line, traced as θ runs from −π/2 to π/2.','r=\\sec\\theta');
+
+OMQ.forEach(q=>{q.fp=fpOf(q)});
+
+if(typeof module!=='undefined')module.exports={BANK,TPL,genQ,analyze,nice,quant,CAT,CATMAP,catBuild,fpOf,buildQ,OMQ,OMMAP};
 </script>
 
 <script id="ui">
@@ -993,7 +1155,7 @@ function weightedT(){const tot=TPL.reduce((s,t)=>s+t.w,0);let r=Math.random()*to
 const fpCache=new Map();
 function fpId(id){if(!fpCache.has(id)){const q=buildQ(id);fpCache.set(id,q?(q.fp||fpOf(q)):id)}return fpCache.get(id)}
 const isInterview=q=>q.src===GS||q.src===IL;
-function poolFor(lvl,src){return CAT[lvl].filter(q=>src==='mix'||(src==='bank'?isInterview(q):!isInterview(q)))}
+function poolFor(lvl,src){if(src==='om')return OMQ.filter(q=>q.lvl===lvl);return CAT[lvl].filter(q=>src==='mix'||(src==='bank'?isInterview(q):!isInterview(q)))}
 function unseen(pool){const seen=new Set((store.seen||[]).map(fpId));return pool.filter(q=>!seen.has(q.fp))}
 function pick(){
   st.notice='';
@@ -1010,7 +1172,8 @@ function pick(){
   const q=fresh[Math.floor(Math.random()*fresh.length)];return Object.assign({},q)
 }
 function updateLevelLabels(){const src=$('#src').value==='mine'?'mix':$('#src').value;
-  [...$('#lvl').options].forEach(o=>{const L=+o.value,p=poolFor(L,src);o.textContent=`${LV[L]} (${unseen(p).length} of ${p.length} new)`})}
+  const nm=src==='om'?{1:'Warm-up',2:'Middle + polar',3:'Hard'}:LV;
+  [...$('#lvl').options].forEach(o=>{const L=+o.value,p=poolFor(L,src);o.textContent=`${nm[L]} (${unseen(p).length} of ${p.length} new)`})}
 
 /* ---------- view window ---------- */
 function sampleFns(q){
@@ -1312,7 +1475,7 @@ function showQ(q){
   $('#qEq').innerHTML=q.disp||`${lhs} = ${q.eq}`;
   $('#qAsk').textContent=q.kind==='multi'?'Sketch on the same axes':'Sketch';
   const n=$('#qNote');n.hidden=!q.note;n.textContent=q.note||'';
-  const L=$('#qLevel');L.textContent=LV[q.lvl];L.className='pill lvl'+q.lvl;
+  const L=$('#qLevel');L.textContent=q.tier||LV[q.lvl];L.className='pill lvl'+q.lvl;
   $('#qSrc').textContent=q.src;$('#qReview').hidden=!st.reviewing&&!q._review;$('#qNum').textContent='#'+(st.hi+1);
   $('#hint').hidden=true;$('#answer').hidden=true;st.show='ink';$('#viewSwitch').hidden=true;
   $('#revealBtn').textContent='Reveal answer';$('#hintBtn').disabled=false;
@@ -1330,29 +1493,33 @@ function fresh(){stash();st.hist.length=st.hi+1;next()}
 function isSaved(id){return store.bank.includes(id)}
 function toggleSave(){flipSave(st.q.id);updateSaveBtn()}
 function updateSaveBtn(){const b=$('#saveBtn'),on=isSaved(st.q.id);b.setAttribute('aria-pressed',String(on));b.textContent=on?'★ Saved':'☆ Save'}
-let page='practice',bankTab='seen',bankLvl=0,pvId=null,pvW=0;
+let page='practice',bankTab='seen',bankSet='main',bankLvl=0,pvId=null,pvW=0;
 const xP=$('#cPv').getContext('2d');
 function showPage(pg){page=pg;$('#viewPractice').hidden=pg!=='practice';$('#viewBank').hidden=pg==='practice';$('.filters').hidden=pg!=='practice';$('#savedTabs').hidden=pg!=='saved';$('#pgSaved').setAttribute('aria-selected',String(pg==='saved'));
   $('#pgPractice').setAttribute('aria-selected',String(pg==='practice'));$('#pgBank').setAttribute('aria-selected',String(pg==='bank'));
-  if(pg!=='practice'){renderBank();pvW=0;renderPreview()}else{resize();updateSaveBtn()}}
+  if(pg!=='practice'){if(pg==='saved'&&typeof bankLvl==='string')bankLvl=0;renderBank();pvW=0;renderPreview()}else{resize();updateSaveBtn()}}
 $('#pgPractice').onclick=()=>showPage('practice');$('#pgBank').onclick=()=>showPage('bank');$('#pgSaved').onclick=()=>showPage('saved');
 const ALLIDS=()=>[1,2,3].flatMap(L=>CAT[L].map(q=>q.id));
-function bankIds(){if(page==='bank')return ALLIDS();return bankTab==='seen'?(store.seen||[]):store.bank.slice().reverse()}
+function bankIds(){if(page==='bank')return bankSet==='om'?OMQ.map(q=>q.id):ALLIDS();return bankTab==='seen'?(store.seen||[]):store.bank.slice().reverse()}
 function renderBank(){
   $('#seenCount').textContent=`(${(store.seen||[]).length})`;$('#bankCount').textContent=`(${store.bank.length})`;
   $('#tabSeen').setAttribute('aria-selected',String(bankTab==='seen'));$('#tabMine').setAttribute('aria-selected',String(bankTab==='mine'));
-  $('#bankFilter').innerHTML=[[0,'All'],[1,'Easy'],[2,'Medium'],[3,'Hard']].map(([v,l])=>`<button data-lv="${v}" aria-pressed="${bankLvl===v}">${l}</button>`).join('');
-  const qs=bankIds().map(id=>buildQ(id)).filter(q=>q&&(!bankLvl||q.lvl===bankLvl));
-  $('#bankTitle').textContent=page==='bank'?`All questions: ${qs.length}${bankLvl?' '+LV[bankLvl]:''} of ${ALLIDS().length}`:`${bankTab==='seen'?'Questions that came up':'Questions you starred'}: ${qs.length}`;
+  const omV=page==='bank'&&bankSet==='om';$('#setTabs').hidden=page!=='bank';$('#mainCount').textContent=ALLIDS().length;$('#omCount').textContent=OMQ.length;
+  $('#setMain').setAttribute('aria-selected',String(!omV));$('#setOM').setAttribute('aria-selected',String(omV));
+  const chips=omV?[[0,'All'],['Warm-up','Warm-up'],['Middle','Middle'],['Hard','Hard'],['Polar','Polar']]:[[0,'All'],[1,'Easy'],[2,'Medium'],[3,'Hard']];
+  $('#bankFilter').innerHTML=chips.map(([v,l])=>`<button data-lv="${v}" aria-pressed="${String(bankLvl)===String(v)}">${l}</button>`).join('');
+  const keep=q=>!bankLvl||(typeof bankLvl==='string'?q.tier===bankLvl:q.lvl===bankLvl);
+  const qs=bankIds().map(id=>buildQ(id)).filter(q=>q&&keep(q));
+  $('#bankTitle').textContent=page==='bank'?(omV?`Oxbridge Mentors set: ${qs.length}${bankLvl?' '+bankLvl:''} of ${OMQ.length} (the 36 sheet problems plus Mentors-style ones)`:`All questions: ${qs.length}${bankLvl?' '+LV[bankLvl]:''} of ${ALLIDS().length}`):`${bankTab==='seen'?'Questions that came up':'Questions you starred'}: ${qs.length}`;
   const e=$('#bankEmpty');e.hidden=qs.length>0;e.textContent=page==='bank'?'No questions.':bankTab==='seen'?(bankLvl?'No questions at this level have come up yet.':'Questions appear here once they come up in Practice.'):(bankLvl?'No saved questions at this level.':'Press ☆ Save on a question to keep it here. Pick “My saved bank only” in Practice to drill just these.');
   if(!qs.some(q=>q.id===pvId))pvId=qs.length?qs[0].id:null;
   $('#bankList').innerHTML=qs.map(q=>{const eq=q.disp||`${q.lhs||YV} = ${q.eq}`,sv=isSaved(q.id);
-    return`<li><button class="bq${q.id===pvId?' cur':''}" data-id="${q.id}" title="Show the answer graph"><span>${eq}</span><small>${LV[q.lvl]}</small></button><button class="sv" data-sv="${q.id}" aria-pressed="${sv}" aria-label="${sv?'Remove from':'Add to'} my saved" title="${sv?'Remove from':'Add to'} my saved">${sv?'★':'☆'}</button></li>`}).join('');
+    return`<li><button class="bq${q.id===pvId?' cur':''}" data-id="${q.id}" title="Show the answer graph"><span>${eq}</span><small>${q.tier||LV[q.lvl]}</small></button><button class="sv" data-sv="${q.id}" aria-pressed="${sv}" aria-label="${sv?'Remove from':'Add to'} my saved" title="${sv?'Remove from':'Add to'} my saved">${sv?'★':'☆'}</button></li>`}).join('');
 }
 function renderPreview(){
   const q=pvId&&buildQ(pvId);$('#pvBody').hidden=!q;$('#pvEmpty').hidden=!!q;if(!q)return;
   $('#pvEq').innerHTML=q.disp||`${q.lhs||YV} = ${q.eq}`;const n=$('#pvNote');n.hidden=!q.note;n.textContent=q.note||'';
-  const L=$('#pvLevel');L.textContent=LV[q.lvl];L.className='pill lvl'+q.lvl;$('#pvSrc').textContent=q.src;
+  const L=$('#pvLevel');L.textContent=q.tier||LV[q.lvl];L.className='pill lvl'+q.lvl;$('#pvSrc').textContent=q.src;
   const on=isSaved(q.id),b=$('#pvSave');b.setAttribute('aria-pressed',String(on));b.textContent=on?'★ Saved':'☆ Save';
   const sh=$('#pvSheet'),w=sh.clientWidth;if(!w)return;pvW=w;const h=Math.round(Math.min(Math.max(w*.6,260),560));sh.style.height=h+'px';
   const c=$('#cPv'),dpr=window.devicePixelRatio||1;c.width=Math.round(w*dpr);c.height=Math.round(h*dpr);
@@ -1364,7 +1531,8 @@ function renderPreview(){
   }finally{keys.forEach(k=>st[k]=sv[k])}
 }
 $('#tabSeen').onclick=()=>{bankTab='seen';renderBank();renderPreview()};$('#tabMine').onclick=()=>{bankTab='mine';renderBank();renderPreview()};
-$('#bankFilter').onclick=e=>{const t=e.target.closest('[data-lv]');if(!t)return;bankLvl=+t.dataset.lv;renderBank();renderPreview()};
+$('#bankFilter').onclick=e=>{const t=e.target.closest('[data-lv]');if(!t)return;const v=t.dataset.lv;bankLvl=isNaN(+v)?v:+v;renderBank();renderPreview()};
+$('#setMain').onclick=()=>{bankSet='main';bankLvl=0;renderBank();renderPreview()};$('#setOM').onclick=()=>{bankSet='om';bankLvl=0;renderBank();renderPreview()};
 function flipSave(id){if(isSaved(id))store.bank=store.bank.filter(x=>x!==id);else store.bank.push(id);save()}
 $('#bankList').onclick=e=>{const sv=e.target.closest('[data-sv]');if(sv){flipSave(sv.dataset.sv);renderBank();renderPreview();return}
   const b=e.target.closest('[data-id]');if(!b)return;pvId=b.dataset.id;renderBank();renderPreview()};
@@ -1379,13 +1547,13 @@ const DESMOS={b4:['y^2=(x-1)/x^2 {x>=0}'],b5:['y=tan(x) {0<=x<=pi/2}','y=arctan(
   b27:['y=(x-round(x))^2'],b28:['y=(1/x-round(1/x))^2'],b29:['(cos(e^t/(1+e^t)),sin(e^t/(1+e^t)))'],b30:['(sin(t),sin(2t))'],b31:['x^y=y^x {x>0} {y>0}'],b32:['x^(2/3)+y^(2/3)=1'],
   b21:['y=2(1-e^(-x^2))'],b43:['y=2^x','y=x^2'],b44:['y^2=x^2(x+1)'],b45:['(cos(t),sin(3t))'],b47:['y=x-floor(x)']};
 function cleanExpr(w){return w.replace(/\*1\//g,'/').replace(/^0\+/,'').replace(/\+-/g,'-').replace(/(^|[^\w^.])1\*/g,'$1').replace(/(^|[^\w^.])1x/g,'$1x').replace(/\+0\)/g,')').replace(/e\^\(/g,'e^(')}
-function desmosExprs(q){if(DESMOS[q.id])return DESMOS[q.id];if(q.kind==='pm')return['y^2='+cleanExpr(q.wa)];if(q.kind==='fn'&&q.wa)return['y='+cleanExpr(q.wa)];return[]}
+function desmosExprs(q){if(q.ds)return q.ds;if(DESMOS[q.id])return DESMOS[q.id];if(q.kind==='pm')return['y^2='+cleanExpr(q.wa)];if(q.kind==='fn'&&q.wa)return['y='+cleanExpr(q.wa)];return[]}
 const escH=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 function copyText(t,btn,code){const done=()=>{if(btn){const o=btn.textContent;btn.textContent='Copied';setTimeout(()=>btn.textContent=o,1400)}};
   const sel=()=>{if(!code)return;const r=document.createRange();r.selectNodeContents(code);const s=getSelection();s.removeAllRanges();s.addRange(r)};
   try{navigator.clipboard.writeText(t).then(done,sel)}catch(e){sel()}}
 function renderDesmos(el,q){const ex=desmosExprs(q);if(!ex.length){el.innerHTML='';return}
-  const pr=q.kind==='param'?` Then set the parameter range to ${q.t[0]===0?'0':num(+q.t[0].toFixed(2))} ≤ t ≤ ${q.t[1]===TAU?'2π':num(+q.t[1].toFixed(2))}.`:'';
+  const pr=q.polar?` Desmos draws polar curves for 0 ≤ θ ≤ 12π by default; to match this question, set the θ range to ${q.t[0]<.001?'0':num(+q.t[0].toFixed(2))} ≤ θ ≤ ${Math.abs(q.t[1]-TAU)<1e-9?'2π':Math.abs(q.t[1]-PI)<1e-9?'π':num(+(q.t[1]/PI).toFixed(2))+'π'} in the line's settings.`:q.kind==='param'?` Then set the parameter range to ${q.t[0]===0?'0':num(+q.t[0].toFixed(2))} ≤ t ≤ ${q.t[1]===TAU?'2π':num(+q.t[1].toFixed(2))}.`:'';
   el.innerHTML=ex.map((e,i)=>`<div class="ds-row"><code>${escH(e)}</code><button data-copy="${i}">Copy</button></div>`).join('')+
     `<a class="ds-open" href="https://www.desmos.com/calculator" target="_blank" rel="noopener">Open in Desmos ↗</a><p class="ds-note">The button copies ${ex.length>1?'all the equations':'the equation'}. Paste into the first line in Desmos.${ex.length>1?' Use Copy on each line if it pastes as one.':''}${pr}</p>`;
   el.querySelectorAll('[data-copy]').forEach(b=>b.onclick=()=>copyText(ex[+b.dataset.copy],b,b.previousElementSibling));
@@ -1422,7 +1590,8 @@ function featuresHTML(){
     rows.push(['Meets x-axis',an.zeros.length?an.zeros.map(z=>'x = '+nice(z.x)+(z.touch?' (double root of g)':'')).join('<br>'):'nowhere in view']);
     const va=an.sing.filter(s=>s.type==='asym');if(va.length)rows.push(['Vertical asymptotes',va.map(s=>'x = '+nice(s.x)).join('<br>')]);
     const p=endTxt(an.endP),n=endTxt(an.endN);if(p)rows.push(['g(x) as x → +∞',p]);if(n)rows.push(['g(x) as x → −∞',n]);
-  }else rows.push(['Type',{multi:'Several curves, same axes',param:'Parametric curve',implicit:'Implicit curve'}[q.kind]]);
+  }else if(q.polar)rows.push(['Type','Polar curve (r, θ), drawn for '+(Math.abs(q.t[1]-TAU)<1e-9&&q.t[0]===0?'0 ≤ θ ≤ 2π':'the range in the question')]);
+  else rows.push(['Type',{multi:'Several curves, same axes',param:'Parametric curve',implicit:'Implicit curve'}[q.kind]]);
   return rows.map(([a,b])=>`<dt>${a}</dt><dd>${b}</dd>`).join('');
 }
 function features(){$('#feat').innerHTML=featuresHTML();$('#idea').innerHTML='<b>Key idea</b>'+st.q.idea}

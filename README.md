@@ -6,6 +6,7 @@ Open `index.html` in a browser (works best in Safari on iPad with Apple Pencil, 
 
 ## Features
 - 750 distinct questions: 250 each at Easy, Medium and Hard, plus 49 hand-written interview-style questions (Gravell sheet and Oxbridge interview lists).
+- Oxbridge Mentors set: the 30-problem sheet and its 6 polar curves, plus 86 new problems at the same level (Warm-up, Middle, Hard, Polar), including integrals, implicit curves and polar curves. Pick it under Questions → Oxbridge Mentors set, or browse it on the Question bank page.
 - No repeats until you have done every question at a level.
 - Blank dotted sheet that you can pan and zoom without limit. Turn axes on when you want them (integers, radians or degrees, with a range picker for trig).
 - Apple Pencil only drawing on iPad; fingers move and zoom the sheet.
